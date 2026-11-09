@@ -18,6 +18,12 @@ The verbs cover the JSON API.
 `tool` calls whatever `GET /api/mcp/tools` lists.
 `api` sends any other path.
 
+`--save DIR` writes the response body into `DIR` and adds an entry to `DIR/index.json`.
+The body file is the upstream JSON.
+The index names the method, path, query, status, and the file.
+Another app can read the index and open the file.
+A response that contains an access token or a refresh token is not written.
+
 Browser pages, LiveView, the sitemap, the license page, and the labs stay in the browser.
 Browser sign-in and the OAuth redirects stay in the browser.
 A CORS preflight is not a command.

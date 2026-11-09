@@ -9,6 +9,7 @@ defmodule JurisdictionalCli do
 
   alias JurisdictionalCli.Client
   alias JurisdictionalCli.Present
+  alias JurisdictionalCli.Store
 
   @exit_ok 0
   @exit_response 1
@@ -54,6 +55,7 @@ defmodule JurisdictionalCli do
     --token TOKEN    bearer token for this invocation (or JURISDICTIONAL_TOKEN)
     --json           print the upstream body
     --profile NAME   send Accept: application/json; profile="NAME"
+    --save DIR       write the response body and an index entry into DIR
     --yes            skip the confirmation prompt on a destructive tool
 
   A flag uses hyphens. The wire parameter uses underscores.
@@ -138,7 +140,7 @@ defmodule JurisdictionalCli do
   defp split_globals([], globals, acc), do: {:ok, globals, Enum.reverse(acc)}
 
   defp split_globals([flag, value | rest], globals, acc)
-       when flag in ["--host", "--token", "--profile"] do
+       when flag in ["--host", "--token", "--profile", "--save"] do
     if flag?(value) do
       {:error, "#{flag} needs a value"}
     else
@@ -150,7 +152,7 @@ defmodule JurisdictionalCli do
   end
 
   defp split_globals([flag | _], _globals, _acc)
-       when flag in ["--host", "--token", "--profile"] do
+       when flag in ["--host", "--token", "--profile", "--save"] do
     {:error, "#{flag} needs a value"}
   end
 
@@ -167,11 +169,12 @@ defmodule JurisdictionalCli do
   end
 
   defp empty_globals do
-    %{host: nil, token: nil, profile: nil, json: false, yes: false}
+    %{host: nil, token: nil, profile: nil, json: false, yes: false, save: nil}
   end
 
   defp put_global(globals, "--host", value), do: {:ok, %{globals | host: value}}
   defp put_global(globals, "--token", value), do: {:ok, %{globals | token: value}}
+  defp put_global(globals, "--save", value), do: {:ok, %{globals | save: value}}
 
   defp put_global(globals, "--profile", value) do
     if String.contains?(value, ["\"", " ", "\t"]) do
@@ -278,7 +281,9 @@ defmodule JurisdictionalCli do
                  }
                ) do
             {:ok, _session, 200, body, _headers} ->
-              store_login(opts, email, body)
+              opts
+              |> store_login(email, body)
+              |> refuse_token_save(opts, globals)
 
             {:ok, _session, 401, body, _} ->
               write_raw(opts, body)
@@ -367,7 +372,8 @@ defmodule JurisdictionalCli do
               raw_finish(
                 opts,
                 Client.request(session, method, path, query, body),
-                true
+                %{globals | json: true},
+                %{method: method, path: path, query: query}
               )
             end)
           else
@@ -446,7 +452,8 @@ defmodule JurisdictionalCli do
             raw_finish(
               opts,
               Client.request(session, "GET", "/api/mcp/tools", %{}, nil),
-              globals.json
+              globals,
+              %{method: "GET", path: "/api/mcp/tools", query: %{}}
             )
           end)
       end
@@ -534,7 +541,13 @@ defmodule JurisdictionalCli do
 
   defp send_tool(opts, globals, session, name, arguments) do
     body = Jason.encode!(%{"tool" => name, "arguments" => arguments})
-    raw_finish(opts, Client.request(session, "POST", "/api/mcp/execute", %{}, body), globals.json)
+
+    raw_finish(
+      opts,
+      Client.request(session, "POST", "/api/mcp/execute", %{}, body),
+      globals,
+      %{method: "POST", path: "/api/mcp/execute", query: %{}}
+    )
   end
 
   defp juricode(opts, globals, args) do
@@ -1021,7 +1034,12 @@ defmodule JurisdictionalCli do
     query = Map.new(flags, fn {key, value} -> {wire(key), value} end)
 
     with_session(opts, globals, fn session ->
-      raw_finish(opts, Client.request(session, method, path, query, body), globals.json)
+      raw_finish(
+        opts,
+        Client.request(session, method, path, query, body),
+        globals,
+        %{method: method, path: path, query: query}
+      )
     end)
   end
 
@@ -1188,16 +1206,16 @@ defmodule JurisdictionalCli do
     end
   end
 
-  defp raw_finish(opts, {:ok, _session, status, body, headers}, force_raw) do
-    raw_finish(opts, {:ok, status, body, headers}, force_raw)
+  defp raw_finish(opts, {:ok, _session, status, body, headers}, globals, request) do
+    raw_finish(opts, {:ok, status, body, headers}, globals, request)
   end
 
-  defp raw_finish(opts, {:error, code, message}, _force_raw) do
+  defp raw_finish(opts, {:error, code, message}, _globals, _request) do
     write(opts, :stderr, message)
     code
   end
 
-  defp raw_finish(opts, result, force_raw) do
+  defp raw_finish(opts, result, globals, request) do
     case result do
       {:network, reason} ->
         write(opts, :stderr, "request failed: #{inspect(reason)}\n")
@@ -1205,19 +1223,55 @@ defmodule JurisdictionalCli do
 
       {:ok, status, body, headers} ->
         note_rate_limit(opts, headers)
-        write_body(opts, body, force_raw or not opts[:tty?])
+        write_body(opts, body, globals.json or not opts[:tty?])
+        saved = save_response(opts, globals, request, status, body)
 
         cond do
           status == 401 ->
             write(opts, :stderr, "This route needs a token. Run jurisdictional login.\n")
             @exit_auth
 
-          status in 200..299 ->
+          status in 200..299 and saved == :ok ->
             @exit_ok
 
           true ->
             @exit_response
         end
+    end
+  end
+
+  defp refuse_token_save(code, opts, %{save: dir}) when is_binary(dir) do
+    write(opts, :stderr, "not saving a response that contains a token\n")
+    if code == @exit_ok, do: @exit_response, else: code
+  end
+
+  defp refuse_token_save(code, _opts, _globals), do: code
+
+  defp save_response(_opts, %{save: nil}, _request, _status, _body), do: :ok
+
+  defp save_response(opts, %{save: dir}, request, status, body) do
+    saved =
+      Store.put(dir, %{
+        method: request.method,
+        path: request.path,
+        query: request.query,
+        status: status,
+        body: body,
+        captured_at: DateTime.to_iso8601(opts[:now])
+      })
+
+    case saved do
+      {:ok, file} ->
+        write(opts, :stderr, "saved #{file}\n")
+        :ok
+
+      {:error, :token} ->
+        write(opts, :stderr, "not saving a response that contains a token\n")
+        :error
+
+      {:error, reason} ->
+        write(opts, :stderr, "saving response: #{inspect(reason)}\n")
+        :error
     end
   end
 
