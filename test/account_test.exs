@@ -81,7 +81,9 @@ defmodule JurisdictionalCli.AccountTest do
 
             Plug.Conn.resp(conn, 200, ~s({"ok":true}))
           end)
-        end, home: home)
+        end,
+        home: home
+      )
 
     assert code == 0, err
     assert_received {:body, %{"refresh_token" => "ref"}, ["Bearer old"]}
