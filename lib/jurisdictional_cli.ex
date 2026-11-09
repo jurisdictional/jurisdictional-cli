@@ -272,6 +272,8 @@ defmodule JurisdictionalCli do
         write(opts, :stderr, "password is required\n")
         @exit_usage
       else
+        write(opts, :stderr, "signing in\n")
+
         with_host(opts, globals, fn session ->
           case Client.post(
                  session,
@@ -288,6 +290,7 @@ defmodule JurisdictionalCli do
               |> refuse_token_save(opts, globals)
 
             {:ok, _session, 401, body, _} ->
+              write(opts, :stderr, "The email or password was not accepted.\n")
               write_raw(opts, body)
               @exit_auth
 
@@ -1335,9 +1338,12 @@ defmodule JurisdictionalCli do
         if opts[:capture?] do
           nil
         else
-          case IO.gets(prompt) do
+          # stderr is unbuffered, so the prompt is on screen before the read waits.
+          IO.write(:stderr, prompt)
+
+          case IO.gets("") do
             :eof -> nil
-            line -> String.trim(line)
+            line -> String.trim(to_string(line))
           end
         end
     end

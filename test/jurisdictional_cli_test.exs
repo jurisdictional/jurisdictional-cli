@@ -206,28 +206,25 @@ defmodule JurisdictionalCliTest do
     assert err == ""
   end
 
-  test "login asks for the email and password before it waits" do
-    import ExUnit.CaptureIO
-
+  test "a rejected password says so instead of going quiet" do
     home = fresh_home()
-    bypass = Bypass.open()
 
-    Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
-      Plug.Conn.resp(conn, 401, ~s({"error":"invalid"}\n))
-    end)
+    {code, out, err} =
+      invoke(
+        ["login", "--email", "ada@example.com"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            Plug.Conn.resp(conn, 401, ~s({"error":"invalid"}\n))
+          end)
+        end,
+        home: home,
+        lines: ["secret"]
+      )
 
-    output =
-      capture_io("ada@example.com\nsecret\n", fn ->
-        JurisdictionalCli.run(
-          ["--host", "http://127.0.0.1:#{bypass.port}", "login"],
-          home: home,
-          now: ~U[2026-11-09 12:00:00Z],
-          env: %{}
-        )
-      end)
-
-    assert output =~ "email:"
-    assert output =~ "password:"
+    assert code == 4
+    assert err =~ "signing in"
+    assert err =~ "was not accepted"
+    assert out =~ "invalid"
   end
 
   test "login stores credentials and leaves the long-lived token file" do
