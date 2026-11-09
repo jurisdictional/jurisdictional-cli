@@ -24,6 +24,7 @@ defmodule JurisdictionalCli do
 
   Commands:
     login                          store a token from POST /api/v1/auth/token
+    logout                         DELETE /api/v1/auth/token and drop stored credentials
     api METHOD PATH                call /api/v1 (or an absolute /api path)
     tools                          GET /api/mcp/tools
     tool NAME                      POST /api/mcp/execute
@@ -35,6 +36,9 @@ defmodule JurisdictionalCli do
     people get ID
     nearby --lat N --lng N
     activity
+    me [jurisdictions|officials|contributions|feed|notifications]
+    devices list|add|remove ID
+    sync jurisdictions|officials
     geo layers|jurisdiction ID
     well-known
     health
@@ -80,6 +84,9 @@ defmodule JurisdictionalCli do
         ["login" | cmd] ->
           login(opts, globals, cmd)
 
+        ["logout" | cmd] ->
+          logout(opts, globals, cmd)
+
         ["api" | cmd] ->
           api(opts, globals, cmd)
 
@@ -93,7 +100,7 @@ defmodule JurisdictionalCli do
           juricode(opts, globals, cmd)
 
         [cmd | cmd_args]
-        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health) ->
+        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health me devices sync) ->
           curated(opts, globals, cmd, cmd_args)
 
         [cmd | _] ->
@@ -585,9 +592,19 @@ defmodule JurisdictionalCli do
 
         @exit_ok
       else
-        case curated_path(cmd, parsed) do
-          {:ok, path, flags} ->
-            get_query(opts, globals, path, flags)
+        case account_route(cmd, parsed) do
+          :skip ->
+            case curated_path(cmd, parsed) do
+              {:ok, path, flags} ->
+                get_query(opts, globals, path, flags)
+
+              {:error, message} ->
+                write(opts, :stderr, message <> "\n")
+                @exit_usage
+            end
+
+          {:ok, method, path, flags, body} ->
+            send_route(opts, globals, method, path, flags, body)
 
           {:error, message} ->
             write(opts, :stderr, message <> "\n")
@@ -600,6 +617,116 @@ defmodule JurisdictionalCli do
         @exit_usage
     end
   end
+
+  defp logout(opts, globals, args) do
+    with {:ok, parsed} <- parse_cmd(args) do
+      cond do
+        parsed.help ->
+          write(
+            opts,
+            :stdout,
+            "usage: jurisdictional logout\n\nRevokes the refresh token and deletes credentials.json.\nThe long-lived token file is left in place.\n"
+          )
+
+          @exit_ok
+
+        parsed.positionals != [] ->
+          write(opts, :stderr, "logout takes no positional arguments\n")
+          @exit_usage
+
+        true ->
+          body =
+            case Client.stored_refresh_token(opts) do
+              nil -> nil
+              token -> Jason.encode!(%{"refresh_token" => token})
+            end
+
+          code = send_route(opts, globals, "DELETE", "/api/v1/auth/token", %{}, body)
+
+          if code == @exit_ok do
+            case Client.delete_credentials(opts) do
+              :ok ->
+                write(opts, :stderr, "removed stored credentials\n")
+
+              {:error, reason} ->
+                write(opts, :stderr, "removing credentials: #{inspect(reason)}\n")
+            end
+          end
+
+          code
+      end
+    else
+      {:error, message} ->
+        write(opts, :stderr, message <> "\n")
+        @exit_usage
+    end
+  end
+
+  defp account_route("me", %{positionals: [], flags: flags}),
+    do: {:ok, "GET", "/api/v1/me", flags, nil}
+
+  defp account_route("me", %{positionals: ["jurisdictions"], flags: flags}) do
+    {:ok, "GET", "/api/v1/me/jurisdictions", flags, nil}
+  end
+
+  defp account_route("me", %{positionals: ["officials"], flags: flags}) do
+    {:ok, "GET", "/api/v1/me/officials", flags, nil}
+  end
+
+  defp account_route("me", %{positionals: ["contributions"], flags: flags}) do
+    {:ok, "GET", "/api/v1/me/contributions", flags, nil}
+  end
+
+  defp account_route("me", %{positionals: ["feed"], flags: flags}) do
+    {:ok, "GET", "/api/v1/me/feed", flags, nil}
+  end
+
+  defp account_route("me", %{positionals: ["notifications"], flags: flags}) do
+    {:ok, "GET", "/api/v1/me/notification-preferences", flags, nil}
+  end
+
+  defp account_route("me", %{positionals: ["notifications", "set"], flags: flags}) do
+    with {:ok, body} <- json_body(flags) do
+      {:ok, "PUT", "/api/v1/me/notification-preferences", %{}, body}
+    end
+  end
+
+  defp account_route("me", _parsed) do
+    {:error,
+     "usage: jurisdictional me [jurisdictions|officials|contributions|feed|notifications]"}
+  end
+
+  defp account_route("devices", %{positionals: ["list"], flags: flags}) do
+    {:ok, "GET", "/api/v1/devices", flags, nil}
+  end
+
+  defp account_route("devices", %{positionals: ["add"], flags: flags}) do
+    with {:ok, body} <- json_body(flags) do
+      {:ok, "POST", "/api/v1/devices", %{}, body}
+    end
+  end
+
+  defp account_route("devices", %{positionals: ["remove", id], flags: flags}) do
+    {:ok, "DELETE", "/api/v1/devices/" <> encode_id(id), flags, nil}
+  end
+
+  defp account_route("devices", _parsed) do
+    {:error, "usage: jurisdictional devices list|add|remove ID"}
+  end
+
+  defp account_route("sync", %{positionals: ["jurisdictions"], flags: flags}) do
+    {:ok, "GET", "/api/v1/sync/jurisdictions", flags, nil}
+  end
+
+  defp account_route("sync", %{positionals: ["officials"], flags: flags}) do
+    {:ok, "GET", "/api/v1/sync/officials", flags, nil}
+  end
+
+  defp account_route("sync", _parsed) do
+    {:error, "usage: jurisdictional sync jurisdictions|officials"}
+  end
+
+  defp account_route(_cmd, _parsed), do: :skip
 
   defp curated_path("nearby", parsed) do
     cond do
@@ -773,15 +900,42 @@ defmodule JurisdictionalCli do
   end
 
   defp get_query(opts, globals, path, flags) do
-    query =
-      Map.new(flags, fn {key, value} ->
-        {wire(key), value}
-      end)
+    send_route(opts, globals, "GET", path, flags, nil)
+  end
+
+  defp send_route(opts, globals, method, path, flags, body) do
+    query = Map.new(flags, fn {key, value} -> {wire(key), value} end)
 
     with_session(opts, globals, fn session ->
-      raw_finish(opts, Client.request(session, "GET", path, query, nil), globals.json)
+      raw_finish(opts, Client.request(session, method, path, query, body), globals.json)
     end)
   end
+
+  defp json_body(flags) do
+    with {:ok, object} <- object_from_file(flags) do
+      flags = Map.delete(flags, "file")
+
+      object =
+        Enum.reduce(flags, object, fn {key, value}, acc ->
+          Map.put(acc, wire(key), json_value(value))
+        end)
+
+      {:ok, Jason.encode!(object)}
+    end
+  end
+
+  defp json_value("true"), do: true
+  defp json_value("false"), do: false
+  defp json_value("0"), do: 0
+
+  defp json_value(<<c, _rest::binary>> = value) when c in ?1..?9 do
+    case Integer.parse(value) do
+      {number, ""} -> number
+      _ -> value
+    end
+  end
+
+  defp json_value(value), do: value
 
   defp with_session(opts, globals, fun), do: with_open(opts, &Client.open_session/2, globals, fun)
   defp with_host(opts, globals, fun), do: with_open(opts, &Client.open_host/2, globals, fun)

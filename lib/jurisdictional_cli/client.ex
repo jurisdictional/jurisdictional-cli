@@ -18,6 +18,23 @@ defmodule JurisdictionalCli.Client do
   Writes `~/.jurisdictional/credentials.json` at mode 600.
   Does not write `~/.jurisdictional/token`.
   """
+  def stored_refresh_token(opts) do
+    case read_credentials(opts) do
+      {:ok, %{"refresh_token" => token}} when is_binary(token) and token != "" -> token
+      _ -> nil
+    end
+  end
+
+  def delete_credentials(opts) do
+    path = Path.join(config_dir(opts), "credentials.json")
+
+    case File.rm(path) do
+      :ok -> :ok
+      {:error, :enoent} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   def write_credentials(opts, creds) when is_map(creds) do
     dir = config_dir(opts)
 
