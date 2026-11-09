@@ -1,0 +1,112 @@
+{
+  "data": [
+    {
+      "geoid": "US",
+      "id": 1,
+      "level": "federal",
+      "name": "United States of America",
+      "ocd_id": "ocd-division/country:us",
+      "parent_id": null,
+      "state_abbr": null
+    },
+    {
+      "geoid": "06",
+      "id": 3274,
+      "level": "state",
+      "name": "California",
+      "ocd_id": "ocd-division/country:us/state:ca",
+      "parent_id": 1,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0601",
+      "id": 123375,
+      "level": "board_of_equalization_district",
+      "name": "California State Board of Equalization District 1",
+      "ocd_id": "ocd-division/country:us/state:ca/board_of_equalization:1",
+      "parent_id": 3274,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0604",
+      "id": 3558,
+      "level": "congressional_district",
+      "name": "Congressional District 4",
+      "ocd_id": "ocd-division/country:us/state:ca/cd:4",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "06003",
+      "id": 81536,
+      "level": "state_legislative_upper",
+      "name": "State Senate District 3",
+      "ocd_id": "ocd-division/country:us/state:ca/sldu:3",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "06011",
+      "id": 81943,
+      "level": "state_legislative_lower",
+      "name": "Assembly District 11",
+      "ocd_id": "ocd-division/country:us/state:ca/sldl:11",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "06095",
+      "id": 2532,
+      "level": "county",
+      "name": "Solano",
+      "ocd_id": "ocd-division/country:us/state:ca/county:solano",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "06095D04",
+      "id": 122171,
+      "level": "county_district",
+      "name": "Solano County Supervisorial District 4",
+      "ocd_id": "ocd-division/country:us/state:ca/county:solano/council_district:4",
+      "parent_id": 2532,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0609593520",
+      "id": 37085,
+      "level": "county_subdivision",
+      "name": "Vacaville",
+      "ocd_id": null,
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554",
+      "id": 70118,
+      "level": "place",
+      "name": "Vacaville",
+      "ocd_id": "ocd-division/country:us/state:ca/place:vacaville",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D03",
+      "id": 123381,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 3",
+      "ocd_id": "ocd-division/country:us/state:ca/place:vacaville/council_district:3",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0640590",
+      "id": 77297,
+      "level": "school_district_unified",
+      "name": "Vacaville Unified School District",
+      "ocd_id": "ocd-division/country:us/state:ca/county:solano/school_district:vacaville_unified",
+      "parent_id": 3274,
+      "state_abbr": "CA"
+    }
+  ]
+}

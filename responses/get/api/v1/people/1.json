@@ -1,0 +1,52 @@
+{
+  "data": {
+    "current_positions": [
+      {
+        "agency": null,
+        "body": null,
+        "id": 14587,
+        "position": {
+          "id": 1,
+          "label": "Mayor",
+          "role": null
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": "2026-10-17T20:57:21Z",
+        "verified_on": "2026-10-22"
+      }
+    ],
+    "email": null,
+    "first_name": "John",
+    "full_name": "John Carli",
+    "id": 1,
+    "identifiers": [],
+    "image": {
+      "attribution": null,
+      "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/full.webp",
+      "height": 128,
+      "jpeg": {
+        "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.jpg",
+        "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/full.jpg"
+      },
+      "license": "public-domain-ca-gov",
+      "photographer_credit": null,
+      "placeholder": null,
+      "sizes": {
+        "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.webp",
+        "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/256.webp",
+        "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/64.webp"
+      },
+      "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2985/458",
+      "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.webp",
+      "width": 128
+    },
+    "image_license": null,
+    "image_source": null,
+    "image_url": null,
+    "last_name": "Carli",
+    "political_affiliation": null,
+    "updated_at": "2026-04-04T00:14:38Z",
+    "url": null,
+    "wikipedia_url": null
+  }
+}

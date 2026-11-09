@@ -1,0 +1,84 @@
+{
+  "data": [
+    {
+      "geoid": "216659",
+      "id": 86720,
+      "level": "special_district",
+      "name": "Rural North Vacaville Water District",
+      "parent_id": 2532,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554",
+      "id": 70118,
+      "level": "place",
+      "name": "Vacaville",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0609593520",
+      "id": 37085,
+      "level": "county_subdivision",
+      "name": "Vacaville",
+      "parent_id": null,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D01",
+      "id": 123379,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 1",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D02",
+      "id": 123380,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 2",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D03",
+      "id": 123381,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 3",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D04",
+      "id": 123382,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 4",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D05",
+      "id": 123383,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 5",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "0681554D06",
+      "id": 123384,
+      "level": "city_council_district",
+      "name": "Vacaville City Council District 6",
+      "parent_id": 70118,
+      "state_abbr": "CA"
+    },
+    {
+      "geoid": "211282",
+      "id": 86719,
+      "level": "special_district",
+      "name": "Vacaville Elmira Cemetery Dist",
+      "parent_id": 2532,
+      "state_abbr": "CA"
+    }
+  ]
+}

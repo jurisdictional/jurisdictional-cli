@@ -1,0 +1,722 @@
+{
+  "tools": [
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Set the user's location by street address or coordinates. Returns the geocode (lat/lng) and juricode — a stack of jurisdiction IDs from federal down to municipal. Use the returned jurisdiction_ids to scope subsequent search queries. The juricode holds every layer, unfiltered. County subdivisions (level \"county_subdivision\") may be statistical areas that govern nothing (e.g. a California census county division), not towns or townships. Each one carries census_funcstat, census_lsad, kind and kind_label: kind is \"governing\" (Census FUNCSTAT A, an active town/township government), \"non_governing\" (statistical or inactive) or \"unclassified\" (no FUNCSTAT stored yet); kind_label names it (e.g. \"Charter Township\", \"Census County Division\"). Citizen-facing juricode views hide non_governing county subdivisions; filter on kind to match them.",
+      "inputSchema": {
+        "properties": {
+          "address": {
+            "description": "Street address to geocode (e.g., '300 Hemlock Ave, Vacaville, CA 95688'), or a plus code: full ('849VCWC8+R9') or short with its town ('CWC8+R9 Vacaville, CA')",
+            "type": "string"
+          },
+          "latitude": {
+            "description": "Latitude coordinate (use instead of address)",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude coordinate (use instead of address)",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "type": "object"
+      },
+      "name": "set_location"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search civic data with jurisdiction scoping and topic filtering. Pass jurisdiction_ids from set_location to scope results to relevant governments. Use focus to choose entity type and topic to narrow by subject area. With focus \"people\", a district's people are the holders of the seats it elects (electing_jurisdiction_id), e.g. the supervisor for a supervisorial district; each current position carries position_id and electing_jurisdiction_id. With focus \"governance\": County subdivisions (level \"county_subdivision\") may be statistical areas that govern nothing (e.g. a California census county division), not towns or townships. Each one carries census_funcstat, census_lsad, kind and kind_label: kind is \"governing\" (Census FUNCSTAT A, an active town/township government), \"non_governing\" (statistical or inactive) or \"unclassified\" (no FUNCSTAT stored yet); kind_label names it (e.g. \"Charter Township\", \"Census County Division\"). Citizen-facing juricode views hide non_governing county subdivisions; filter on kind to match them.",
+      "inputSchema": {
+        "properties": {
+          "focus": {
+            "description": "What type of entity to search",
+            "enum": [
+              "services",
+              "agencies",
+              "people",
+              "bodies",
+              "governance"
+            ],
+            "type": "string"
+          },
+          "jurisdiction_ids": {
+            "description": "Jurisdiction IDs to scope results (from set_location). Omit to search all jurisdictions.",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results",
+            "maximum": 50,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Free text search within the chosen focus (optional)",
+            "type": "string"
+          },
+          "topic": {
+            "description": "Subject area filter (optional)",
+            "enum": [
+              "housing",
+              "health",
+              "education",
+              "safety",
+              "permits",
+              "elections",
+              "taxes",
+              "benefits",
+              "employment",
+              "utilities",
+              "recreation",
+              "transportation"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "focus"
+        ],
+        "type": "object"
+      },
+      "name": "explore"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for jurisdictions by name or location. Returns basic information about matching jurisdictions including name, level, state and geographic details. Short names (\"Lake\", \"West\") match many states: pass state to narrow them. Cities, towns and villages are level \"place\"; level \"municipal\" matches places too. County subdivisions (level \"county_subdivision\") may be statistical areas that govern nothing (e.g. a California census county division), not towns or townships. Each one carries census_funcstat, census_lsad, kind and kind_label: kind is \"governing\" (Census FUNCSTAT A, an active town/township government), \"non_governing\" (statistical or inactive) or \"unclassified\" (no FUNCSTAT stored yet); kind_label names it (e.g. \"Charter Township\", \"Census County Division\"). Citizen-facing juricode views hide non_governing county subdivisions; filter on kind to match them.",
+      "inputSchema": {
+        "properties": {
+          "level": {
+            "description": "Filter by jurisdiction level (optional). Cities are \"place\"; \"municipal\" matches places too.",
+            "enum": [
+              "federal",
+              "state",
+              "county",
+              "county_district",
+              "place",
+              "city_council_district",
+              "congressional_district",
+              "state_legislative_upper",
+              "state_legislative_lower",
+              "board_of_equalization_district",
+              "county_subdivision",
+              "consolidated_city",
+              "school_district_unified",
+              "school_district_elementary",
+              "school_district_secondary",
+              "school_district_admin",
+              "tribal",
+              "tribal_block_group",
+              "municipal",
+              "special_district",
+              "other"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "default": 0,
+            "description": "Number of results to skip (for pagination)",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search query (jurisdiction name or partial name)",
+            "type": "string"
+          },
+          "state": {
+            "description": "Two-letter state abbreviation to limit results, case-insensitive (e.g. 'MS'). Omit for all states.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_jurisdictions"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get detailed information about a specific jurisdiction by ID, or by its Open Civic Data division id (ocd_id). Returns comprehensive data including agencies, services, geographic boundaries, demographics, and related jurisdictions. elected_seats lists the seats this jurisdiction's voters elect (positions whose electing_jurisdiction_id is it, e.g. the supervisor a supervisorial district elects), each with its body and current_holder. A place (level \"place\") carries census_classfp, census_funcstat, census_lsad and kind: kind is \"governing\" (Census FUNCSTAT A or B, a city, town or village with its own government), \"non_governing\" (FUNCSTAT S, every census-designated place, or inactive) or \"unclassified\" (no FUNCSTAT stored). County subdivisions (level \"county_subdivision\") may be statistical areas that govern nothing (e.g. a California census county division), not towns or townships. Each one carries census_funcstat, census_lsad, kind and kind_label: kind is \"governing\" (Census FUNCSTAT A, an active town/township government), \"non_governing\" (statistical or inactive) or \"unclassified\" (no FUNCSTAT stored yet); kind_label names it (e.g. \"Charter Township\", \"Census County Division\"). Citizen-facing juricode views hide non_governing county subdivisions; filter on kind to match them.",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "description": "The unique identifier of the jurisdiction",
+            "type": "integer"
+          },
+          "ocd_id": {
+            "description": "Open Civic Data division id instead of id, e.g. ocd-division/country:us/state:ca/place:vacaville",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_jurisdiction_details"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Find all jurisdictions that contain a specific latitude/longitude point. Useful for answering 'What jurisdictions am I in?' based on GPS coordinates. Returns every layer, unfiltered. County subdivisions (level \"county_subdivision\") may be statistical areas that govern nothing (e.g. a California census county division), not towns or townships. Each one carries census_funcstat, census_lsad, kind and kind_label: kind is \"governing\" (Census FUNCSTAT A, an active town/township government), \"non_governing\" (statistical or inactive) or \"unclassified\" (no FUNCSTAT stored yet); kind_label names it (e.g. \"Charter Township\", \"Census County Division\"). Citizen-facing juricode views hide non_governing county subdivisions; filter on kind to match them.",
+      "inputSchema": {
+        "properties": {
+          "latitude": {
+            "description": "Latitude coordinate",
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude coordinate",
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      },
+      "name": "find_jurisdictions_at_point"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get prioritized sourcing tasks for a jurisdiction — specific things jurisdictional.org needs help with. Returns tasks like 'verify the water district phone number' or 'find the city council meeting schedule'. Use this to show users concrete ways they can contribute for their area. Tasks can be completed and submitted back using the submit_sourcing_result tool. With no stored task, it returns the jurisdiction's coverage gaps as tasks, naming the agencies that still lack a phone or website (leaving out those with a value already in review).",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_id": {
+            "description": "ID of the jurisdiction to fetch tasks for",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 5,
+            "description": "Maximum number of tasks to return",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "task_type": {
+            "description": "Filter by task type (optional)",
+            "enum": [
+              "discover_agencies",
+              "extract_agency_contacts",
+              "discover_bodies",
+              "extract_officials",
+              "extract_services",
+              "extract_meeting_schedule",
+              "verify_stale_data",
+              "resolve_url",
+              "extract_budget"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "jurisdiction_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_pending_tasks"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get entity coverage summary and contribution recommendations for a jurisdiction. Returns counts per entity layer (agencies, bodies, positions, people, services, places: parks, libraries and schools, elected_seats and elected_seats_held: the seats this jurisdiction's voters elect and how many have a current holder) and data quality metrics (missing contacts, empty descriptions). Recommendations depend on the level: for an electoral district (county_district, city_council_district, board_of_equalization_district, congressional_district, state_legislative_upper, state_legislative_lower) the gap is who holds the seat it elects; for a state, agency contacts come before services. Use this to show users where the biggest gaps are and what to work on next.",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_id": {
+            "description": "ID of the jurisdiction to assess",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "jurisdiction_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_coverage"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Returns the highest-priority jurisdictions at a coverage level (default: zero agencies) — the best next targets for data gathering. Ordered by population (largest first, unknown population last, then name) for every coverage; special districts, which have no population, by whether they have a Census website, then name. For level place it returns only places with a government of their own (Census FUNCSTAT A or B), never census-designated places, unless include_statistical is true. Each row carries its website on file, the registered .gov domains linked to it (start there) and its agency count. Use this to answer 'what should I gather next?' for a state or overall. Skips jurisdictions with an active coverage gap (recorded as blocked, retry_after in the future) unless include_gaps is true; a gap stops counting once the jurisdiction has agencies.",
+      "inputSchema": {
+        "properties": {
+          "coverage": {
+            "description": "Coverage level to return (default none). none = no agencies; agencies = agencies but no council or board; governed = agencies and a body but no services; served = all three. A state's body is its legislature. Use agencies or governed to queue thin places for backfill.",
+            "enum": [
+              "none",
+              "agencies",
+              "governed",
+              "served"
+            ],
+            "type": "string"
+          },
+          "include_gaps": {
+            "default": false,
+            "description": "Also return jurisdictions with an active coverage gap (see record_coverage_gap)",
+            "type": "boolean"
+          },
+          "include_statistical": {
+            "default": false,
+            "description": "Level place only: also return places without a government of their own (census-designated places, inactive places, and places with no FUNCSTAT stored)",
+            "type": "boolean"
+          },
+          "level": {
+            "description": "Jurisdiction level to filter by (optional). Defaults to place. special_district rows have no population: those with a Census website come first, then by name.",
+            "enum": [
+              "place",
+              "county",
+              "state_legislative_upper",
+              "state_legislative_lower",
+              "congressional_district",
+              "school_district_unified",
+              "special_district"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "default": 5,
+            "description": "How many uncovered jurisdictions to return",
+            "maximum": 20,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "state": {
+            "description": "Two-letter state abbreviation to limit results (e.g. 'CA'). Omit for all states.",
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "get_next_uncovered"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for government agencies by name, description, or contact information. Can filter by agency type.",
+      "inputSchema": {
+        "properties": {
+          "agency_type": {
+            "description": "Filter by agency type: what the agency does, not what kind of unit it is. administration (executive management: city/county manager, administrator, mayor's office); animal_services (animal control and shelters); assessment (property assessment and appraisal); clerk (city/county clerk, public records, recorder); courts (courts and court administration); economic_development (business attraction and retention); education (schools and education administration); elections (voter registration and elections); emergency_management (emergency preparedness, 911 dispatch); environment (environmental protection, sustainability); finance (finance, budget, treasury, tax collection); fire (fire and rescue, EMS); health (public health, behavioral health, hospitals); housing (housing authorities and housing programs); human_resources (personnel and employee relations); human_services (social services, benefits, aging, veterans); information_technology (IT and technology services); legal (city/county attorney, counsel, prosecution, public defense); legislative (legislatures and councils' own agencies); library (public libraries); parks_recreation (parks, recreation, open space); planning (planning, zoning, building and permits); police (police and sheriff law enforcement, corrections); public_works (streets, engineering, facilities, fleet); transportation (transit, airports, ports, traffic); utilities (water, sewer, power, solid waste); workforce (employment and job training)",
+            "enum": [
+              "administration",
+              "animal_services",
+              "assessment",
+              "clerk",
+              "courts",
+              "economic_development",
+              "education",
+              "elections",
+              "emergency_management",
+              "environment",
+              "finance",
+              "fire",
+              "health",
+              "housing",
+              "human_resources",
+              "human_services",
+              "information_technology",
+              "legal",
+              "legislative",
+              "library",
+              "parks_recreation",
+              "planning",
+              "police",
+              "public_works",
+              "transportation",
+              "utilities",
+              "workforce"
+            ],
+            "type": "string"
+          },
+          "jurisdiction_ids": {
+            "description": "Scope results to these jurisdiction IDs (from set_location)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search query to match against agency name, description, phone, or email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_agencies"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get comprehensive details for a specific government agency by ID, including its services, bodies, staff positions (with each seat's current holder) and jurisdiction.",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "description": "The unique identifier of the agency",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "get_agency_details"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Find all government agencies within a specified radius of geographic coordinates (latitude/longitude).",
+      "inputSchema": {
+        "properties": {
+          "latitude": {
+            "description": "Latitude coordinate (e.g., 37.7749 for San Francisco)",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude coordinate (e.g., -122.4194 for San Francisco)",
+            "type": "number"
+          },
+          "radius_meters": {
+            "default": 5000,
+            "description": "Search radius in meters (default 5000m = 5km)",
+            "maximum": 100000,
+            "minimum": 100,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      },
+      "name": "find_agencies_near_point"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for public services by name, description, eligibility requirements, or contact information. Can filter by service type.",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_ids": {
+            "description": "Scope results to these jurisdiction IDs (from set_location)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search query to match against service name, description, eligibility, or contact info",
+            "type": "string"
+          },
+          "service_type": {
+            "description": "Filter by service type (e.g., 'health', 'education', 'housing', 'transportation')",
+            "enum": [
+              "health",
+              "education",
+              "housing",
+              "transportation",
+              "employment",
+              "business",
+              "public_safety",
+              "utilities",
+              "recreation",
+              "social_services"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_services"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get comprehensive details for a specific public service by ID, including agency and jurisdiction information.",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "description": "The unique identifier of the service",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "get_service_details"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Find all public services within a specified radius of geographic coordinates (latitude/longitude).",
+      "inputSchema": {
+        "properties": {
+          "latitude": {
+            "description": "Latitude coordinate (e.g., 37.7749 for San Francisco)",
+            "type": "number"
+          },
+          "longitude": {
+            "description": "Longitude coordinate (e.g., -122.4194 for San Francisco)",
+            "type": "number"
+          },
+          "radius_meters": {
+            "default": 10000,
+            "description": "Search radius in meters (default 10000m = 10km)",
+            "maximum": 100000,
+            "minimum": 100,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "type": "object"
+      },
+      "name": "find_services_near_point"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search public places (parks, libraries, schools) by name, description or city. Each result carries its website, address, coordinates, jurisdiction and managing agency. Search before create_entity(entity_type: place) to avoid duplicates.",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_ids": {
+            "description": "Scope results to these jurisdiction IDs (from set_location)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "place_type": {
+            "description": "Filter by place type",
+            "enum": [
+              "library",
+              "park",
+              "school"
+            ],
+            "type": "string"
+          },
+          "query": {
+            "description": "Search query to match against place name, description or city",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_places"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for public officials and government employees by name, position, or contact information. Can filter by political affiliation.",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_ids": {
+            "description": "Scope results to people holding a tenure in these jurisdiction IDs (from set_location)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "political_affiliation": {
+            "description": "Filter by political affiliation (e.g., 'Democratic', 'Republican', 'Independent')",
+            "type": "string"
+          },
+          "query": {
+            "description": "Search query to match against first name, last name, position, or email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_people"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get comprehensive details for a specific public official by ID, including all positions held (current and historical tenures).",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "description": "The unique identifier of the person",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "get_person_details"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for governing bodies (city councils, commissions, boards) by name or legislative type.",
+      "inputSchema": {
+        "properties": {
+          "jurisdiction_ids": {
+            "description": "Scope results to these jurisdiction IDs (from set_location)",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "legislative_type": {
+            "description": "Filter by legislative type (e.g., 'council', 'commission', 'board', 'committee')",
+            "type": "string"
+          },
+          "limit": {
+            "default": 10,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search query to match against body name, source, or legislative type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "search_bodies"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Search for positions (seats/roles) within governing bodies. Returns position label, role, and current holder if any.",
+      "inputSchema": {
+        "properties": {
+          "body_id": {
+            "description": "Filter positions to a specific governing body",
+            "type": "integer"
+          },
+          "limit": {
+            "default": 20,
+            "description": "Maximum number of results to return",
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "description": "Search query to match against position label or role (optional if body_id provided)",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "search_positions"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get comprehensive details for a specific governing body by ID, including jurisdiction and agency associations.",
+      "inputSchema": {
+        "properties": {
+          "as_of": {
+            "description": "ISO-8601 date. Seat holders on that date instead of today. A holder with no published start date counts only from the date a source listed them (verified_on).",
+            "type": "string"
+          },
+          "id": {
+            "description": "The unique identifier of the governing body",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "type": "object"
+      },
+      "name": "get_body_details"
+    }
+  ]
+}

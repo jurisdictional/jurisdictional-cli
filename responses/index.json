@@ -1,0 +1,146 @@
+{
+  "description": "Raw response bodies. Each entry is the request that produced the file.",
+  "entries": [
+    {
+      "captured_at": "2026-11-09T19:27:15.258938Z",
+      "file": "get/api/mcp/tools.json",
+      "method": "GET",
+      "path": "/api/mcp/tools",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:07.129808Z",
+      "file": "get/api/v1/agencies/13012.json",
+      "method": "GET",
+      "path": "/api/v1/agencies/13012",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:06.202152Z",
+      "file": "get/api/v1/agencies__jurisdiction_id_70118.json",
+      "method": "GET",
+      "path": "/api/v1/agencies",
+      "query": {
+        "jurisdiction_id": "70118"
+      },
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:09.930791Z",
+      "file": "get/api/v1/bodies/1/meetings.json",
+      "method": "GET",
+      "path": "/api/v1/bodies/1/meetings",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:10.774217Z",
+      "file": "get/api/v1/bodies/1/positions.json",
+      "method": "GET",
+      "path": "/api/v1/bodies/1/positions",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:02.706119Z",
+      "file": "get/api/v1/juricode__address_vacaville-ca.json",
+      "method": "GET",
+      "path": "/api/v1/juricode",
+      "query": {
+        "address": "Vacaville, CA"
+      },
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:03.751032Z",
+      "file": "get/api/v1/jurisdictions/70118.json",
+      "method": "GET",
+      "path": "/api/v1/jurisdictions/70118",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:08.105970Z",
+      "file": "get/api/v1/jurisdictions/70118/bodies.json",
+      "method": "GET",
+      "path": "/api/v1/jurisdictions/70118/bodies",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:09.018084Z",
+      "file": "get/api/v1/jurisdictions/70118/meetings.json",
+      "method": "GET",
+      "path": "/api/v1/jurisdictions/70118/meetings",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:05.365911Z",
+      "file": "get/api/v1/jurisdictions/at_point__lat_38.3566__lng_-121.9877.json",
+      "method": "GET",
+      "path": "/api/v1/jurisdictions/at_point",
+      "query": {
+        "lat": "38.3566",
+        "lng": "-121.9877"
+      },
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:04.632657Z",
+      "file": "get/api/v1/jurisdictions/autocomplete__q_vacaville__state_ca.json",
+      "method": "GET",
+      "path": "/api/v1/jurisdictions/autocomplete",
+      "query": {
+        "q": "Vacaville",
+        "state": "CA"
+      },
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:11.758302Z",
+      "file": "get/api/v1/nearby__lat_38.3566__lng_-121.9877.json",
+      "method": "GET",
+      "path": "/api/v1/nearby",
+      "query": {
+        "lat": "38.3566",
+        "lng": "-121.9877"
+      },
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:25.370670Z",
+      "file": "get/api/v1/people/1.json",
+      "method": "GET",
+      "path": "/api/v1/people/1",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:12.722669Z",
+      "file": "get/geo/jurisdictions/70118/simplified.json",
+      "method": "GET",
+      "path": "/geo/jurisdictions/70118/simplified.json",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:14.222302Z",
+      "file": "get/healthz.json",
+      "method": "GET",
+      "path": "/healthz",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-09T19:27:13.408158Z",
+      "file": "get/well-known/oauth-authorization-server.json",
+      "method": "GET",
+      "path": "/.well-known/oauth-authorization-server",
+      "query": {},
+      "status": 200
+    }
+  ]
+}

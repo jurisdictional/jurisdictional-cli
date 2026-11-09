@@ -1,0 +1,378 @@
+{
+  "count": 7,
+  "data": [
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 14587,
+        "person": {
+          "first_name": "John",
+          "full_name": "John Carli",
+          "id": 1,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Carli",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2985/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/4504f995fa2bbb33/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": null,
+      "id": 1,
+      "label": "Mayor",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 14607,
+        "person": {
+          "first_name": "Roy",
+          "full_name": "Roy Stockton",
+          "id": 13984,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Stockton",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2984/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/65f1f95827022e69/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D01",
+        "id": 123379,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 1"
+      },
+      "id": 2,
+      "label": "Council Member, District 1",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 14608,
+        "person": {
+          "first_name": "Gregory",
+          "full_name": "Gregory Ritchie II",
+          "id": 13985,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Ritchie II",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2983/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/9f3b4a8e20091d83/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D02",
+        "id": 123380,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 2"
+      },
+      "id": 3,
+      "label": "Council Member, District 2",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 4,
+        "person": {
+          "first_name": "Michael",
+          "full_name": "Michael Silva",
+          "id": 11,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Silva",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2982/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/80775214e2e3f8c9/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D03",
+        "id": 123381,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 3"
+      },
+      "id": 4,
+      "label": "Council Member, District 3",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 14609,
+        "person": {
+          "first_name": "Sarah",
+          "full_name": "Sarah Chapman",
+          "id": 13986,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Chapman",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2981/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/614597dfbb33f4fa/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D04",
+        "id": 123382,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 4"
+      },
+      "id": 5,
+      "label": "Council Member, District 4",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 14610,
+        "person": {
+          "first_name": "Ted",
+          "full_name": "Ted Fremouw",
+          "id": 13987,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Fremouw",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2980/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/acffa1d5fe1ed0b7/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D05",
+        "id": 123383,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 5"
+      },
+      "id": 6,
+      "label": "Council Member, District 5",
+      "role": null
+    },
+    {
+      "body": {
+        "id": 1,
+        "legislative_type": "council",
+        "name": "Vacaville City Council"
+      },
+      "current_tenure": {
+        "end_date": null,
+        "id": 7,
+        "person": {
+          "first_name": "Jeanette",
+          "full_name": "Jeanette Wylie",
+          "id": 14,
+          "image": null,
+          "image_license": null,
+          "image_source": null,
+          "image_url": null,
+          "last_name": "Wylie",
+          "political_affiliation": null,
+          "portrait": {
+            "attribution": null,
+            "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/full.webp",
+            "height": 128,
+            "jpeg": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/128.jpg",
+              "full": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/full.jpg"
+            },
+            "license": "public-domain-ca-gov",
+            "photographer_credit": null,
+            "placeholder": null,
+            "sizes": {
+              "128": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/128.webp",
+              "256": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/256.webp",
+              "64": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/64.webp"
+            },
+            "source_page_url": "https://www.cityofvacaville.gov/Home/Components/StaffDirectory/StaffDirectory/2979/458",
+            "url": "https://jurisdictional-app-uploads.s3.us-east-1.amazonaws.com/public/img/f91e7a89aa5818bb/128.webp",
+            "width": 128
+          }
+        },
+        "source_url": "https://www.cityofvacaville.gov/government/city-council",
+        "start_date": null,
+        "verified_on": "2026-10-22"
+      },
+      "electing_jurisdiction": {
+        "geoid": "0681554D06",
+        "id": 123384,
+        "level": "city_council_district",
+        "name": "Vacaville City Council District 6"
+      },
+      "id": 7,
+      "label": "Council Member, District 6",
+      "role": null
+    }
+  ]
+}

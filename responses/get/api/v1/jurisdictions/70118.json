@@ -1,0 +1,62 @@
+{
+  "data": {
+    "budget_url": "https://www.cityofvacaville.gov/home/showpublisheddocument/26866/639207477938400000",
+    "census_function": null,
+    "census_function_code": null,
+    "census_lsad": "25",
+    "center": null,
+    "counties": [
+      {
+        "geoid": "06095",
+        "id": 2532,
+        "name": "Solano",
+        "share": 1.0
+      }
+    ],
+    "display_name": "City of Vacaville",
+    "domains": [
+      {
+        "domain_name": "cityofvacaville.gov",
+        "domain_type": "City",
+        "jurisdiction_match": "place_name",
+        "jurisdiction_matched_at": "2026-10-22T14:05:51Z",
+        "organization_name": "City of Vacaville",
+        "suborganization_name": null
+      }
+    ],
+    "flag": null,
+    "geoid": "0681554",
+    "government": true,
+    "government_reason": "in_census_of_governments_2022",
+    "id": 70118,
+    "level": "place",
+    "logo": null,
+    "name": "Vacaville",
+    "notes": null,
+    "ocd_id": "ocd-division/country:us/state:ca/place:vacaville",
+    "ocd_jurisdiction_id": "ocd-jurisdiction/country:us/state:ca/place:vacaville/government",
+    "pages": [
+      {
+        "id": 20,
+        "kind": "meetings",
+        "url": "https://pub-vacaville.escribemeetings.com"
+      },
+      {
+        "id": 21,
+        "kind": "agendas",
+        "url": "https://pub-vacaville.escribemeetings.com"
+      },
+      {
+        "id": 19,
+        "kind": "budget",
+        "url": "https://www.cityofvacaville.gov/home/showpublisheddocument/26866/639207477938400000"
+      }
+    ],
+    "parent_id": null,
+    "population": 103850,
+    "population_year": 2025,
+    "seal": null,
+    "state_abbr": "CA",
+    "wikipedia_url": "https://en.wikipedia.org/wiki/Vacaville,_California"
+  }
+}
