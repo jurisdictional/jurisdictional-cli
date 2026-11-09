@@ -23,12 +23,7 @@ defmodule JurisdictionalCli do
   Usage:
     jurisdictional <command> [flags]
 
-  Commands:
-    login                          store a token from POST /api/v1/auth/token
-    logout                         DELETE /api/v1/auth/token and drop stored credentials
-    api METHOD PATH                call /api/v1 (or an absolute /api path)
-    tools                          GET /api/mcp/tools
-    tool NAME                      POST /api/mcp/execute
+  Public records:
     juricode ADDRESS               GET /api/v1/juricode
     jurisdictions list|get ID|autocomplete|at-point|scene ID
     agencies list|get ID
@@ -36,7 +31,12 @@ defmodule JurisdictionalCli do
     meetings list|get ID
     people get ID
     nearby --lat N --lng N
-    activity
+    geo layers|jurisdiction ID
+
+  This app, not the public record:
+    activity                       search and contribution counts for the heatmap
+    login                          store a token from POST /api/v1/auth/token
+    logout                         DELETE /api/v1/auth/token and drop stored credentials
     me [jurisdictions|officials|contributions|feed|notifications]
     devices list|add|remove ID
     sync jurisdictions|officials
@@ -45,8 +45,10 @@ defmodule JurisdictionalCli do
     tax import
     sourcing next|stats|results|generate
     images get ID|person ID|jurisdiction ID
+    tools                          GET /api/mcp/tools
+    tool NAME                      POST /api/mcp/execute
     message
-    geo layers|jurisdiction ID
+    api METHOD PATH                call /api/v1 (or an absolute /api path)
     well-known
     health
 

@@ -12,11 +12,16 @@ The city agency id is 13012.
 The city council body id is 1.
 One council member is person 1.
 
-`activity` is not included.
-That response is about 5 MB for a 7-day window.
-`geo layers` is not included.
-That response is about 2.6 MB because each layer carries GeoJSON.
+`activity` is not in this catalog.
+It counts searches and contributions inside this app.
+The response has no person, address, or IP.
+It is still not a public record.
+Do not publish it for other apps.
+
+`geo layers` is public boundary data.
+It is not included here because the body is about 2.6 MB.
 `jurisdictions scene` requires a token, so it is not here.
 A login response is never saved.
+Account routes such as `me`, devices, and sync are not here either.
 
-Run the same command with `--save` when you want a fresh local copy, including the two large reads.
+Run the same command with `--save` when you want a fresh local copy of a public record.

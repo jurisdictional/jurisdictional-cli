@@ -19,5 +19,14 @@ defmodule JurisdictionalCli.CatalogTest do
     end
 
     assert Enum.any?(index["entries"], &(&1["path"] == "/api/v1/juricode"))
+
+    # App use and account settings stay out of the public catalog.
+    refute Enum.any?(index["entries"], fn entry ->
+             String.starts_with?(entry["path"], "/api/v1/activity") or
+               String.starts_with?(entry["path"], "/api/v1/me") or
+               String.starts_with?(entry["path"], "/api/v1/devices") or
+               String.starts_with?(entry["path"], "/api/v1/sync") or
+               String.starts_with?(entry["path"], "/api/v1/auth")
+           end)
   end
 end

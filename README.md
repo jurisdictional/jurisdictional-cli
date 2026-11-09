@@ -23,8 +23,12 @@ The body file is the upstream JSON.
 The index names the method, path, query, status, and the file.
 Another app can read the index and open the file.
 A response that contains an access token or a refresh token is not written.
-`responses/` is a checked-in capture of public reads for Vacaville.
+`responses/` is a checked-in capture of public records for Vacaville.
 See `responses/README.md`.
+Those files are jurisdictions, agencies, bodies, meetings, people, and one boundary.
+Activity counts and account settings belong to this app.
+They are not part of that catalog.
+A services read is not in the API yet.
 
 Browser pages, LiveView, the sitemap, the license page, and the labs stay in the browser.
 Browser sign-in and the OAuth redirects stay in the browser.
