@@ -14,10 +14,6 @@ defmodule JurisdictionalCli.Client do
     do_request(session, method, path, query, body, true)
   end
 
-  @doc """
-  Writes `~/.jurisdictional/credentials.json` at mode 600.
-  Does not write `~/.jurisdictional/token`.
-  """
   def stored_refresh_token(opts) do
     case read_credentials(opts) do
       {:ok, %{"refresh_token" => token}} when is_binary(token) and token != "" -> token
@@ -35,6 +31,10 @@ defmodule JurisdictionalCli.Client do
     end
   end
 
+  @doc """
+  Writes `~/.jurisdictional/credentials.json` at mode 600.
+  Does not write `~/.jurisdictional/token`.
+  """
   def write_credentials(opts, creds) when is_map(creds) do
     dir = config_dir(opts)
 
