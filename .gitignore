@@ -1,0 +1,6 @@
+/_build/
+/cover/
+/deps/
+/jurisdictional
+erl_crash.dump
+.elixir_ls/
