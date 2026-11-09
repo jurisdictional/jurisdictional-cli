@@ -28,12 +28,16 @@ defmodule JurisdictionalCli do
     tools                          GET /api/mcp/tools
     tool NAME                      POST /api/mcp/execute
     juricode ADDRESS               GET /api/v1/juricode
-    jurisdictions list|get ID
+    jurisdictions list|get ID|autocomplete|at-point|scene ID
     agencies list|get ID
-    bodies list --jurisdiction ID
-    meetings list --body ID
+    bodies list|positions
+    meetings list|get ID
     people get ID
     nearby --lat N --lng N
+    activity
+    geo layers|jurisdiction ID
+    well-known
+    health
 
   Flags:
     --host URL       API origin (default https://jurisdictional.org, or JURISDICTIONAL_HOST)
@@ -89,7 +93,7 @@ defmodule JurisdictionalCli do
           juricode(opts, globals, cmd)
 
         [cmd | cmd_args]
-        when cmd in ~w(jurisdictions agencies bodies meetings people nearby) ->
+        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health) ->
           curated(opts, globals, cmd, cmd_args)
 
         [cmd | _] ->
@@ -367,14 +371,24 @@ defmodule JurisdictionalCli do
   end
 
   defp api_path("/" <> _ = path) do
-    if String.starts_with?(path, "/api/") or path == "/api" do
-      {:ok, path}
-    else
-      {:ok, "/api/v1" <> path}
+    cond do
+      String.starts_with?(path, "/api/") or path == "/api" ->
+        {:ok, path}
+
+      origin_path?(path) ->
+        {:ok, path}
+
+      true ->
+        {:ok, "/api/v1" <> path}
     end
   end
 
   defp api_path(_), do: {:error, "path must start with /"}
+
+  defp origin_path?(path) do
+    String.starts_with?(path, "/.well-known/") or String.starts_with?(path, "/geo/") or
+      String.starts_with?(path, "/health/") or path in ["/health", "/healthz"]
+  end
 
   defp api_method(method) do
     method = String.upcase(method)
@@ -600,6 +614,26 @@ defmodule JurisdictionalCli do
     end
   end
 
+  defp curated_path("jurisdictions", %{positionals: ["autocomplete"], flags: flags}) do
+    if blank?(flags["q"]) and blank?(flags["query"]) do
+      {:error, "jurisdictions autocomplete requires --q"}
+    else
+      {:ok, "/api/v1/jurisdictions/autocomplete", flags}
+    end
+  end
+
+  defp curated_path("jurisdictions", %{positionals: ["at-point"], flags: flags}) do
+    if blank?(flags["lat"]) or blank?(flags["lng"]) do
+      {:error, "jurisdictions at-point requires --lat and --lng"}
+    else
+      {:ok, "/api/v1/jurisdictions/at_point", flags}
+    end
+  end
+
+  defp curated_path("jurisdictions", %{positionals: ["scene", id], flags: flags}) do
+    {:ok, "/api/v1/jurisdictions/" <> encode_id(id) <> "/scene", flags}
+  end
+
   defp curated_path("jurisdictions", parsed),
     do: collection_path("/api/v1/jurisdictions", parsed)
 
@@ -615,6 +649,12 @@ defmodule JurisdictionalCli do
 
   defp curated_path("people", _parsed), do: {:error, "usage: jurisdictional people get ID"}
 
+  defp curated_path("bodies", %{positionals: ["positions"], flags: flags}) do
+    with {:ok, id, flags} <- one_id(flags, "body", "body-id") do
+      {:ok, "/api/v1/bodies/" <> encode_id(id) <> "/positions", flags}
+    end
+  end
+
   defp curated_path("bodies", %{positionals: ["list"], flags: flags}) do
     with {:ok, id, flags} <- one_id(flags, "jurisdiction", "jurisdiction-id") do
       {:ok, "/api/v1/jurisdictions/" <> URI.encode(id, &URI.char_unreserved?/1) <> "/bodies",
@@ -626,6 +666,10 @@ defmodule JurisdictionalCli do
     {:error, "usage: jurisdictional bodies list --jurisdiction ID"}
   end
 
+  defp curated_path("meetings", %{positionals: ["get", id], flags: flags}) do
+    {:ok, "/api/v1/meetings/" <> encode_id(id), flags}
+  end
+
   defp curated_path("meetings", %{positionals: ["list"], flags: flags}) do
     with {:ok, kind, id, flags} <- meeting_scope(flags) do
       {:ok, "/api/v1/#{kind}/" <> URI.encode(id, &URI.char_unreserved?/1) <> "/meetings", flags}
@@ -635,6 +679,40 @@ defmodule JurisdictionalCli do
   defp curated_path("meetings", _parsed) do
     {:error, "usage: jurisdictional meetings list --body ID"}
   end
+
+  defp curated_path("activity", %{positionals: [], flags: flags}) do
+    {:ok, "/api/v1/activity", flags}
+  end
+
+  defp curated_path("activity", _parsed), do: {:error, "usage: jurisdictional activity"}
+
+  defp curated_path("geo", %{positionals: ["layers"], flags: flags}) do
+    {:ok, "/geo/base_layers.json", flags}
+  end
+
+  defp curated_path("geo", %{positionals: ["jurisdiction", id], flags: flags}) do
+    {:ok, "/geo/jurisdictions/" <> encode_id(id) <> "/simplified.json", flags}
+  end
+
+  defp curated_path("geo", _parsed) do
+    {:error, "usage: jurisdictional geo layers|jurisdiction ID"}
+  end
+
+  defp curated_path("well-known", %{positionals: [], flags: flags}) when flags == %{} do
+    {:ok, "/.well-known/oauth-authorization-server", flags}
+  end
+
+  defp curated_path("well-known", _parsed), do: {:error, "usage: jurisdictional well-known"}
+
+  defp curated_path("health", %{positionals: [], flags: flags}) when flags == %{} do
+    {:ok, "/healthz", flags}
+  end
+
+  defp curated_path("health", _parsed), do: {:error, "usage: jurisdictional health"}
+
+  defp encode_id(id), do: URI.encode(id, &URI.char_unreserved?/1)
+
+  defp blank?(value), do: value in [nil, ""]
 
   defp collection_path(base, %{positionals: ["list"], flags: flags}), do: {:ok, base, flags}
 
