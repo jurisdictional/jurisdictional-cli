@@ -39,6 +39,12 @@ defmodule JurisdictionalCli do
     me [jurisdictions|officials|contributions|feed|notifications]
     devices list|add|remove ID
     sync jurisdictions|officials
+    contributions quick
+    gather submit
+    tax import
+    sourcing next|stats|results|generate
+    images get ID|person ID|jurisdiction ID
+    message
     geo layers|jurisdiction ID
     well-known
     health
@@ -100,7 +106,7 @@ defmodule JurisdictionalCli do
           juricode(opts, globals, cmd)
 
         [cmd | cmd_args]
-        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health me devices sync) ->
+        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health me devices sync contributions gather tax sourcing images message) ->
           curated(opts, globals, cmd, cmd_args)
 
         [cmd | _] ->
@@ -592,7 +598,7 @@ defmodule JurisdictionalCli do
 
         @exit_ok
       else
-        case account_route(cmd, parsed) do
+        case route(cmd, parsed) do
           :skip ->
             case curated_path(cmd, parsed) do
               {:ok, path, flags} ->
@@ -662,6 +668,13 @@ defmodule JurisdictionalCli do
     end
   end
 
+  defp route(cmd, parsed) do
+    case account_route(cmd, parsed) do
+      :skip -> write_route(cmd, parsed)
+      other -> other
+    end
+  end
+
   defp account_route("me", %{positionals: [], flags: flags}),
     do: {:ok, "GET", "/api/v1/me", flags, nil}
 
@@ -727,6 +740,107 @@ defmodule JurisdictionalCli do
   end
 
   defp account_route(_cmd, _parsed), do: :skip
+
+  defp write_route("contributions", %{positionals: ["quick"], flags: flags}) do
+    with {:ok, body} <- json_body(flags) do
+      {:ok, "POST", "/api/v1/contributions/quick", %{}, body}
+    end
+  end
+
+  defp write_route("contributions", _parsed) do
+    {:error, "usage: jurisdictional contributions quick"}
+  end
+
+  defp write_route("gather", %{positionals: ["submit"], flags: flags}) do
+    with {:ok, body} <- file_body(flags) do
+      {:ok, "POST", "/api/v1/gather/submissions", %{}, body}
+    end
+  end
+
+  defp write_route("gather", _parsed),
+    do: {:error, "usage: jurisdictional gather submit --file page.json"}
+
+  defp write_route("tax", %{positionals: ["import"], flags: flags}) do
+    with {:ok, body} <- file_body(flags) do
+      {:ok, "POST", "/api/v1/tax/import", %{}, body}
+    end
+  end
+
+  defp write_route("tax", _parsed),
+    do: {:error, "usage: jurisdictional tax import --file doc.json"}
+
+  defp write_route("sourcing", %{positionals: ["next"], flags: flags}) do
+    {:ok, "GET", "/api/v1/sourcing/next", flags, nil}
+  end
+
+  defp write_route("sourcing", %{positionals: ["stats"], flags: flags}) do
+    {:ok, "GET", "/api/v1/sourcing/stats", flags, nil}
+  end
+
+  defp write_route("sourcing", %{positionals: ["results"], flags: flags}) do
+    with {:ok, body} <- file_body(flags) do
+      {:ok, "POST", "/api/v1/sourcing/results", %{}, body}
+    end
+  end
+
+  defp write_route("sourcing", %{positionals: ["generate"], flags: flags}) do
+    with {:ok, body} <- file_body(flags) do
+      {:ok, "POST", "/api/v1/sourcing/generate", %{}, body}
+    end
+  end
+
+  defp write_route("sourcing", _parsed) do
+    {:error, "usage: jurisdictional sourcing next|stats|results|generate"}
+  end
+
+  defp write_route("images", %{positionals: ["get", id], flags: flags}) do
+    {:ok, "GET", "/api/v1/images/" <> encode_id(id), flags, nil}
+  end
+
+  defp write_route("images", %{positionals: ["person", id], flags: flags}) do
+    with {:ok, body} <- json_body(flags) do
+      {:ok, "POST", "/api/v1/people/" <> encode_id(id) <> "/images", %{}, body}
+    end
+  end
+
+  defp write_route("images", %{positionals: ["jurisdiction", id], flags: flags}) do
+    with {:ok, body} <- json_body(flags) do
+      {:ok, "POST", "/api/v1/jurisdictions/" <> encode_id(id) <> "/images", %{}, body}
+    end
+  end
+
+  defp write_route("images", _parsed) do
+    {:error, "usage: jurisdictional images get ID|person ID|jurisdiction ID"}
+  end
+
+  defp write_route("message", %{positionals: [], flags: flags}) do
+    case Map.pop(flags, "file") do
+      {nil, _} ->
+        {:error, "message requires --file"}
+
+      {path, extra} when extra == %{} ->
+        case File.read(path) do
+          {:ok, raw} -> {:ok, "POST", "/api/mcp/message", %{}, raw}
+          {:error, reason} -> {:error, "#{path}: #{inspect(reason)}"}
+        end
+
+      {_path, _extra} ->
+        {:error, "message takes only --file"}
+    end
+  end
+
+  defp write_route("message", _parsed),
+    do: {:error, "usage: jurisdictional message --file rpc.json"}
+
+  defp write_route(_cmd, _parsed), do: :skip
+
+  defp file_body(flags) do
+    if Map.has_key?(flags, "file") do
+      json_body(flags)
+    else
+      {:error, "this command requires --file"}
+    end
+  end
 
   defp curated_path("nearby", parsed) do
     cond do
