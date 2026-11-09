@@ -333,7 +333,7 @@ defmodule JurisdictionalCli do
 
         case Client.write_credentials(opts, creds) do
           :ok ->
-            write(opts, :stderr, "stored credentials for #{email}\n")
+            write(opts, :stdout, "stored credentials for #{email}\n")
             @exit_ok
 
           {:error, reason} ->
@@ -1325,11 +1325,22 @@ defmodule JurisdictionalCli do
   defp read_line(opts, prompt) do
     seed_lines(opts)
 
-    if opts[:tty?] do
-      write(opts, :stderr, prompt)
-    end
+    case Process.get(:jurisdictional_cli_lines, []) do
+      [line | rest] ->
+        if opts[:tty?], do: write(opts, :stderr, prompt)
+        Process.put(:jurisdictional_cli_lines, rest)
+        String.trim(line)
 
-    pop_line(opts)
+      [] ->
+        if opts[:capture?] do
+          nil
+        else
+          case IO.gets(prompt) do
+            :eof -> nil
+            line -> String.trim(line)
+          end
+        end
+    end
   end
 
   defp seed_lines(opts) do
@@ -1340,24 +1351,6 @@ defmodule JurisdictionalCli do
       _ ->
         Process.put(:jurisdictional_cli_lines, opts[:lines] || [])
         Process.put(:jurisdictional_cli_seeded, true)
-    end
-  end
-
-  defp pop_line(opts) do
-    case Process.get(:jurisdictional_cli_lines, []) do
-      [line | rest] ->
-        Process.put(:jurisdictional_cli_lines, rest)
-        String.trim(line)
-
-      [] ->
-        if opts[:capture?] do
-          nil
-        else
-          case IO.gets("") do
-            :eof -> nil
-            line -> String.trim(line)
-          end
-        end
     end
   end
 

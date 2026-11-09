@@ -50,7 +50,7 @@ defmodule JurisdictionalCli.SaveTest do
     home = fresh_home()
     dir = fresh_dir()
 
-    {code, _out, err} =
+    {code, out, err} =
       invoke(
         ["login", "--email", "ada@example.com", "--save", dir],
         fn bypass ->
@@ -67,7 +67,7 @@ defmodule JurisdictionalCli.SaveTest do
       )
 
     assert code == 1
-    assert err =~ "stored credentials"
+    assert out =~ "stored credentials"
     assert err =~ "not saving a response that contains a token"
     assert File.read!(Path.join(home, ".jurisdictional/credentials.json")) =~ "jur_new"
     refute File.exists?(Path.join(dir, "index.json"))
