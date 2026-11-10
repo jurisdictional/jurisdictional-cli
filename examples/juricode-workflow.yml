@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install jurisdictional
-        run: curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
+        run: curl -fsSL https://github.com/jurisdictional/jurisdictional-cli/releases/latest/download/install.sh | sh
 
       - name: Look up the address
         env:

@@ -5,7 +5,7 @@ Command-line client for the Jurisdictional HTTP API.
 ## Install
 
 ```bash
-curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/jurisdictional/jurisdictional-cli/releases/latest/download/install.sh | sh
 jurisdictional juricode "Vacaville, CA"
 ```
 

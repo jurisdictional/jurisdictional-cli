@@ -1,7 +1,7 @@
 #!/bin/sh
 # Install the jurisdictional CLI from a GitHub release.
 #
-#   curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
+#   curl -fsSL https://github.com/jurisdictional/jurisdictional-cli/releases/latest/download/install.sh | sh
 #
 # Installs a release that carries its own Erlang runtime, so nothing else needs
 # installing. Builds exist for Linux (x86_64, arm64) and Apple silicon Macs.
@@ -13,7 +13,7 @@
 #   JURISDICTIONAL_BASE_URL     download from this URL instead of GitHub (mirrors, testing)
 set -eu
 
-repo="afomi/jurisdictional-cli"
+repo="jurisdictional/jurisdictional-cli"
 version="${JURISDICTIONAL_VERSION:-latest}"
 dir="${JURISDICTIONAL_INSTALL_DIR:-$HOME/.local/bin}"
 home="${JURISDICTIONAL_HOME:-$HOME/.local/share/jurisdictional}"

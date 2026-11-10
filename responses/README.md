@@ -24,7 +24,7 @@ Do not publish it for other apps.
 
 `geo layers` is public boundary data.
 The body is about 2.6 MB, so it lives with each release instead of in git.
-Fetch the latest copy from https://github.com/afomi/jurisdictional-cli/releases/latest/download/geo-layers.json.
+Fetch the latest copy from https://github.com/jurisdictional/jurisdictional-cli/releases/latest/download/geo-layers.json.
 `SHA256SUMS` in the same release lists its checksum.
 `jurisdictions scene` requires a token, so it is not here.
 A login response is never saved.
