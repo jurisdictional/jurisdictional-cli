@@ -24,6 +24,76 @@ defmodule JurisdictionalCli.SaveTest do
     assert hd(index["entries"])["status"] == 200
   end
 
+  test "an index entry is a receipt: url, sha256 of the file, and the declared license" do
+    dir = fresh_dir()
+
+    {code, _out, err} =
+      invoke(
+        ["agencies", "list", "--jurisdiction", "70118", "--q", "fire & police", "--save", dir],
+        fn bypass ->
+          Bypass.expect_once(bypass, "GET", "/api/v1/agencies", fn conn ->
+            conn
+            |> Plug.Conn.put_resp_header(
+              "link",
+              ~s(</api/v1/agencies?offset=100>; rel="next", </license>; rel="license")
+            )
+            |> Plug.Conn.resp(200, ~s({"data":[{"id":7,"name":"Fire"}]}))
+          end)
+        end
+      )
+
+    assert code == 0, err
+    [entry] = Jason.decode!(File.read!(Path.join(dir, "index.json")))["entries"]
+    file = File.read!(Path.join(dir, entry["file"]))
+
+    assert entry["sha256"] == :crypto.hash(:sha256, file) |> Base.encode16(case: :lower)
+    assert entry["url"] =~ ~r{\Ahttp://127\.0\.0\.1:\d+/api/v1/agencies\?}
+    assert entry["url"] =~ "jurisdiction_id=70118"
+    assert entry["url"] =~ "q=fire+%26+police"
+    assert entry["license"] =~ ~r{\Ahttp://127\.0\.0\.1:\d+/license\z}
+  end
+
+  test "an index entry has no license key when the response names none" do
+    dir = fresh_dir()
+
+    {code, _out, err} =
+      invoke(["jurisdictions", "get", "70118", "--save", dir], fn bypass ->
+        Bypass.expect_once(bypass, "GET", "/api/v1/jurisdictions/70118", fn conn ->
+          Plug.Conn.resp(conn, 200, ~s({"data":{"id":70118}}))
+        end)
+      end)
+
+    assert code == 0, err
+    [entry] = Jason.decode!(File.read!(Path.join(dir, "index.json")))["entries"]
+    refute Map.has_key?(entry, "license")
+    assert is_binary(entry["sha256"])
+  end
+
+  test "--save records a redirect as served instead of following it" do
+    dir = fresh_dir()
+    parent = self()
+
+    {code, _out, _err} =
+      invoke(["jurisdictions", "get", "70118", "--save", dir], fn bypass ->
+        Bypass.stub(bypass, "GET", "/api/v1/jurisdictions/70118", fn conn ->
+          conn
+          |> Plug.Conn.put_resp_header("location", "/api/v1/jurisdictions/1")
+          |> Plug.Conn.resp(302, ~s({"moved":true}))
+        end)
+
+        Bypass.stub(bypass, "GET", "/api/v1/jurisdictions/1", fn conn ->
+          send(parent, :followed)
+          Plug.Conn.resp(conn, 200, ~s({"data":{"id":1}}))
+        end)
+      end)
+
+    assert code == 1
+    refute_received :followed
+    [entry] = Jason.decode!(File.read!(Path.join(dir, "index.json")))["entries"]
+    assert entry["status"] == 302
+    assert entry["url"] =~ "/api/v1/jurisdictions/70118"
+  end
+
   test "--save without a directory is a usage error" do
     {code, _out, err} = invoke(["health", "--save"], fn _bypass -> :ok end)
     assert code == 2

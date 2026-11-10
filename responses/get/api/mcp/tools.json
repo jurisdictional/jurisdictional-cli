@@ -717,6 +717,1582 @@
         "type": "object"
       },
       "name": "get_body_details"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Propose a change to a civic entity field. Creates a pending change event for human review. Use this to contribute data about jurisdictions, agencies, bodies, services, positions, or people. The entity must exist and field_name must be a real field on it; otherwise the call fails and lists the valid fields. When the server cannot fetch source_url, pass capture: the page as the user's browser received it, kept privately as evidence of what the user saw (not a fetch by the server).",
+      "inputSchema": {
+        "properties": {
+          "capture": {
+            "description": "Optional: the page as your browser received it (via \"browser\") or as the user pasted it (via \"paste\"), when the server cannot fetch source_url. It is kept privately as evidence of what the user saw, not a fetch by the server, and shown to reviewers beside each claim it supports. Give exactly one of html_base64 or text, at most 2 MB decoded. A bad shape or a sha256 that does not match fails the call, and nothing is written.",
+            "properties": {
+              "captured_at": {
+                "description": "When it was captured, ISO 8601",
+                "type": "string"
+              },
+              "html_base64": {
+                "description": "The page HTML, base64",
+                "type": "string"
+              },
+              "sha256": {
+                "description": "SHA-256 of the decoded bytes (or the text as UTF-8), lowercase hex",
+                "type": "string"
+              },
+              "text": {
+                "description": "The page's text, when there is no HTML",
+                "type": "string"
+              },
+              "via": {
+                "enum": [
+                  "browser",
+                  "paste"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "sha256",
+              "captured_at",
+              "via"
+            ],
+            "type": "object"
+          },
+          "entity_id": {
+            "description": "The numeric ID of the entity",
+            "type": "integer"
+          },
+          "entity_type": {
+            "description": "The type of entity being updated. A page (from a details tool's pages) takes field_name url or kind.",
+            "enum": [
+              "jurisdiction",
+              "agency",
+              "body",
+              "service",
+              "position",
+              "person",
+              "page"
+            ],
+            "type": "string"
+          },
+          "field_name": {
+            "description": "The schema field to update, e.g. agency 'website_url', service 'agency_id', 'name', 'online_url', 'service_type', or position 'electing_jurisdiction_id' (the id of the electoral district whose voters elect the seat; any other level is rejected)",
+            "type": "string"
+          },
+          "new_value": {
+            "description": "The proposed new value for the field",
+            "type": "string"
+          },
+          "notes": {
+            "description": "Optional notes about the source or reasoning",
+            "type": "string"
+          },
+          "source_key": {
+            "description": "Registry key of the source this URL belongs to, e.g. municipal_official_sites, mtas_tn_city_profiles, local_news; see list_data_sources. Omitted, it is municipal_official_sites only when the source URL's host is the government's own: .gov, .mil, a state .us host (ci.vacaville.ca.us), or the jurisdiction's website or registered domain. Any other host (news, directories, vendors, nixle.us) without a source_key is an error naming the host.",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "Required: the http(s) URL of the page where this value was read. If new_value already is the field's value, the claim is recorded as corroboration (status \"corroborated\", no review).",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "field_name",
+          "new_value",
+          "source_url"
+        ],
+        "type": "object"
+      },
+      "name": "propose_change"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a new civic entity (agency, body, service, position, person, place, meeting, agenda_item, or page). Use this when the entity doesn't exist yet in jurisdictional.org. Returns the new entity's ID so you can use propose_change to add more fields. Requires a jurisdiction_id to anchor the entity. Meetings also require body_id and start_time; agenda items require meeting_id. Places (parks, libraries, schools) require place_type and source_url; a place with the same jurisdiction, place_type and name (case- and whitespace-insensitive) is returned as a duplicate, not created again. A page is a government website page by what it is for (kind), e.g. the meetings calendar or the budget: give kind, url and source_url (needs no name); it belongs to jurisdiction_id, or to agency_id or body_id when given (one of them, in that jurisdiction). One page serving two kinds is two calls. The same owner, kind and url is returned as a duplicate. With source_url, a capture (the page as the user's browser received it: evidence of what the user saw, not a fetch by the server) is kept privately and linked to each claim.",
+      "inputSchema": {
+        "properties": {
+          "managing_agency_id": {
+            "description": "Place only: the agency that runs it (e.g. Parks & Recreation); must belong to jurisdiction_id.",
+            "type": "integer"
+          },
+          "start_date": {
+            "description": "Person only: ISO-8601 date the tenure began, when the source publishes it. Omit if unknown.",
+            "type": "string"
+          },
+          "timezone": {
+            "description": "IANA timezone of the meeting, e.g. America/Los_Angeles (the default).",
+            "type": "string"
+          },
+          "street_address": {
+            "description": "Place only: street address, if printed.",
+            "type": "string"
+          },
+          "agency_id": {
+            "description": "Parent agency ID. Required for: service, position. Optional for body: omit it for councils and boards, which belong to the jurisdiction rather than a department",
+            "type": "integer"
+          },
+          "meeting_url": {
+            "description": "Body only: where its meetings, agendas and minutes are published (e.g. a Legistar, Granicus or eScribe calendar), shown live.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Page only, required: what the page is for. open_data is a data portal people browse; data_json is the machine-readable DCAT-US catalog at /data.json; open is an agency's /open page; financial_report covers ACFRs, CAFRs and audits. The list grows; another value is an error naming the valid kinds.",
+            "enum": [
+              "meetings",
+              "agendas",
+              "minutes",
+              "budget",
+              "financial_report",
+              "municipal_code",
+              "open_data",
+              "data_json",
+              "about",
+              "open",
+              "foia",
+              "privacy",
+              "accessibility",
+              "vulnerability_disclosure",
+              "no_fear_act",
+              "inspector_general",
+              "digital_strategy"
+            ],
+            "type": "string"
+          },
+          "source_key": {
+            "description": "Registry key of the source this URL belongs to, e.g. municipal_official_sites, mtas_tn_city_profiles, local_news; see list_data_sources. Omitted, it is municipal_official_sites only when the source URL's host is the government's own: .gov, .mil, a state .us host (ci.vacaville.ca.us), or the jurisdiction's website or registered domain. Any other host (news, directories, vendors, nixle.us) without a source_key is an error naming the host.",
+            "type": "string"
+          },
+          "city": {
+            "description": "Place only: city of the address.",
+            "type": "string"
+          },
+          "agenda_url": {
+            "description": "Agenda packet or HTML agenda URL. Used for meeting.",
+            "type": "string"
+          },
+          "capture": {
+            "description": "Optional: the page as your browser received it (via \"browser\") or as the user pasted it (via \"paste\"), when the server cannot fetch source_url. It is kept privately as evidence of what the user saw, not a fetch by the server, and shown to reviewers beside each claim it supports. Give exactly one of html_base64 or text, at most 2 MB decoded. A bad shape or a sha256 that does not match fails the call, and nothing is written.",
+            "properties": {
+              "captured_at": {
+                "description": "When it was captured, ISO 8601",
+                "type": "string"
+              },
+              "html_base64": {
+                "description": "The page HTML, base64",
+                "type": "string"
+              },
+              "sha256": {
+                "description": "SHA-256 of the decoded bytes (or the text as UTF-8), lowercase hex",
+                "type": "string"
+              },
+              "text": {
+                "description": "The page's text, when there is no HTML",
+                "type": "string"
+              },
+              "via": {
+                "enum": [
+                  "browser",
+                  "paste"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "sha256",
+              "captured_at",
+              "via"
+            ],
+            "type": "object"
+          },
+          "electing_jurisdiction_id": {
+            "description": "Position only: the electoral district whose voters elect this seat, e.g. Solano County Supervisorial District 4 for \"Supervisor, District 4\" on the Board of Supervisors. Must be a jurisdiction at an electoral district level (county_district, city_council_district, board_of_equalization_district, congressional_district, state_legislative_upper, state_legislative_lower). The seat's body stays with its own jurisdiction. To set it on an existing position, use propose_change with field_name electing_jurisdiction_id.",
+            "type": "integer"
+          },
+          "minutes_url": {
+            "description": "Adopted minutes URL. Used for meeting.",
+            "type": "string"
+          },
+          "longitude": {
+            "description": "Place only: longitude, with latitude, when the page gives coordinates.",
+            "type": "number"
+          },
+          "website_url": {
+            "description": "Agency or place: the entity's own web page (a park's own page), shown live as its website.",
+            "type": "string"
+          },
+          "status": {
+            "description": "Meeting status (scheduled, completed, cancelled, postponed)",
+            "type": "string"
+          },
+          "person_id": {
+            "description": "Person only: an existing person (from search_people) to seat on position_id instead of creating a duplicate. Writes only the tenure, under the same rules (source_url required; start_date and term_ends_on optional). Leave out name, first_name and last_name. An error if the person is not found or already holds a current tenure on that position. Returns person_id, tenure_id and person_existed.",
+            "type": "integer"
+          },
+          "description": {
+            "description": "Brief description of the entity",
+            "type": "string"
+          },
+          "online_url": {
+            "description": "Service only: the link a resident clicks to do the thing (payment portal, application form), shown live. Off-domain portals (Tyler, Accela, Granicus) are fine.",
+            "type": "string"
+          },
+          "entity_subtype": {
+            "description": "Subtype: for agencies use agency_type, the agency's function, one of: administration, animal_services, assessment, clerk, courts, economic_development, education, elections, emergency_management, environment, finance, fire, health, housing, human_resources, human_services, information_technology, legal, legislative, library, parks_recreation, planning, police, public_works, transportation, utilities, workforce (omit if unclear; other values are rejected), for bodies use legislative_type (council, commission, board), for services use service_type, what the service is for, one of: health, education, housing, transportation, employment, business, public_safety, utilities, recreation, social_services (business: business licenses, permits and registrations)",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the entity (e.g. 'Parks & Recreation Department'). Required, except for a person given first_name and last_name or seated by person_id.",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "URL of the page you read this entity on. Each field set on the new row is recorded as a claim citing it. It is only cited: it never becomes a link on the entity (use website_url / online_url).",
+            "type": "string"
+          },
+          "position_id": {
+            "description": "Position ID. Optional for person: creates a tenure linking the person to the seat. A tenure requires source_url (the roster or bio page you read); it is recorded as verified today. An explicit null is an error, so a seat lookup that failed creates no one; leave position_id out to create a person without a seat.",
+            "type": "integer"
+          },
+          "actions": {
+            "description": "Service only: what a resident does with it, one or more of: apply, pay, report, reserve, register, renew, request, look_up, subscribe, schedule (report: tell the government about a problem; request: ask it for a thing, such as records or a pickup; schedule: book an appointment or inspection).",
+            "items": {
+              "enum": [
+                "apply",
+                "pay",
+                "report",
+                "reserve",
+                "register",
+                "renew",
+                "request",
+                "look_up",
+                "subscribe",
+                "schedule"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "zip_code": {
+            "description": "Place only: ZIP code of the address.",
+            "type": "string"
+          },
+          "phone": {
+            "description": "Place only: its phone number, if printed.",
+            "type": "string"
+          },
+          "cost": {
+            "description": "Service only: fee as a plain number in dollars (e.g. '50' or '12.50'). Put tiered or conditional fees in the description instead.",
+            "type": "string"
+          },
+          "place_type": {
+            "description": "Place only, required: what the place is.",
+            "enum": [
+              "library",
+              "park",
+              "school"
+            ],
+            "type": "string"
+          },
+          "meeting_id": {
+            "description": "Parent meeting ID. Required for agenda_item.",
+            "type": "integer"
+          },
+          "url": {
+            "description": "Body: the body's own web page (its council or commission page), shown live as its website. Page, required: the page's URL (scheme and host lowercased, fragment and trailing slash dropped).",
+            "type": "string"
+          },
+          "video_url": {
+            "description": "Recording or livestream URL. Used for meeting.",
+            "type": "string"
+          },
+          "external_id": {
+            "description": "Vendor id (eScribe GUID, Granicus clip id). Used for meeting: re-sending a meeting with the same body_id and external_id updates it (status, times, URLs; non-empty values only).",
+            "type": "string"
+          },
+          "start_time": {
+            "description": "ISO-8601 start time. Required for meeting.",
+            "type": "string"
+          },
+          "jurisdiction_id": {
+            "description": "ID of the jurisdiction this entity belongs to (from set_location)",
+            "type": "integer"
+          },
+          "cancelled_at": {
+            "description": "ISO-8601 time a meeting was cancelled. Used for meeting; a cancellation without it is stamped now.",
+            "type": "string"
+          },
+          "term_ends_on": {
+            "description": "Person only: ISO-8601 date the term is scheduled to end, when the source publishes it. Omit if unknown.",
+            "type": "string"
+          },
+          "body_id": {
+            "description": "Parent body ID. Required for: position",
+            "type": "integer"
+          },
+          "last_name": {
+            "description": "Person only: family name (with any suffix, e.g. 'Powell III'). With first_name, overrides splitting `name`.",
+            "type": "string"
+          },
+          "state": {
+            "description": "Place only: two-letter state of the address.",
+            "type": "string"
+          },
+          "end_time": {
+            "description": "ISO-8601 end time. Used for meeting, when updating a known external_id.",
+            "type": "string"
+          },
+          "first_name": {
+            "description": "Person only: given name(s) exactly as published. With last_name, overrides splitting `name`.",
+            "type": "string"
+          },
+          "latitude": {
+            "description": "Place only: latitude, with longitude, when the page gives coordinates.",
+            "type": "number"
+          },
+          "entity_type": {
+            "description": "The type of entity to create",
+            "enum": [
+              "agency",
+              "body",
+              "service",
+              "position",
+              "person",
+              "place",
+              "meeting",
+              "agenda_item",
+              "page"
+            ],
+            "type": "string"
+          },
+          "eligibility": {
+            "description": "Service only: who may use the service, as published.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "jurisdiction_id"
+        ],
+        "type": "object"
+      },
+      "name": "create_entity"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Create a jurisdiction's agencies, their bodies and services, and jurisdiction-level bodies (councils, boards) in ONE call and one transaction. Nest children under their agency instead of passing parent ids. Give each item a `ref`; the result maps every ref to {entity_type, id, status}. Retry-safe: an item whose name already exists in its scope is returned as \"existing\", not duplicated (agencies and bodies by jurisdiction, services by agency). Matching is by name (case- and whitespace-insensitive); failing that, by website_url/source only when that URL appears on exactly one item of its kind in the payload and one row in scope (reported with existing_name). A listing page shared by several items never matches, so they stay distinct. All or nothing: any error rolls back everything and lists every error by path. Unknown fields are rejected. Use dry_run: true to check a payload first. Provenance: each created row records one claim per field set, citing the item's source_url (the page you read it on), else its enclosing parent's source_url, else the call's source_url; counts.claims reports how many. Cite a field read on another page with field_sources on the item, e.g. field_sources: {\"description\": \"<that page>\"}: that field's claim cites that URL, the rest cite source_url. Keys must be fields of the item's kind, values http(s) URLs held to the same host rules as source_url (a non-official host needs source_key). A matched existing row ignores field_sources. An existing agency's description, agency_type, website_url, phone, email and address are never written over: a differing or new value becomes a pending change for review (listed under proposed), an equal one is recorded as corroboration (corroborated), citing the same source; so one call can add contacts to many existing agencies. A dry run's counts read would_create, would_propose and would_corroborate. capture is the call's source_url page as the user's browser received it (evidence of what the user saw, not a fetch by the server); it is kept privately and linked to every claim citing that URL.",
+      "inputSchema": {
+        "properties": {
+          "agencies": {
+            "description": "Agencies: {ref, name, description, agency_type, website_url, phone, email, address, bodies: [body], services: [service]}. agency_type is the agency's function, omitted if unclear; other values are rejected: administration (executive management: city/county manager, administrator, mayor's office); animal_services (animal control and shelters); assessment (property assessment and appraisal); clerk (city/county clerk, public records, recorder); courts (courts and court administration); economic_development (business attraction and retention); education (schools and education administration); elections (voter registration and elections); emergency_management (emergency preparedness, 911 dispatch); environment (environmental protection, sustainability); finance (finance, budget, treasury, tax collection); fire (fire and rescue, EMS); health (public health, behavioral health, hospitals); housing (housing authorities and housing programs); human_resources (personnel and employee relations); human_services (social services, benefits, aging, veterans); information_technology (IT and technology services); legal (city/county attorney, counsel, prosecution, public defense); legislative (legislatures and councils' own agencies); library (public libraries); parks_recreation (parks, recreation, open space); planning (planning, zoning, building and permits); police (police and sheriff law enforcement, corrections); public_works (streets, engineering, facilities, fleet); transportation (transit, airports, ports, traffic); utilities (water, sewer, power, solid waste); workforce (employment and job training)",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "bodies": {
+            "description": "Bodies that belong to the jurisdiction itself, with no agency (the governing council). Body: {ref, name, description, legislative_type, url, source, meeting_url, phone, email, address}. Service (under an agency): {ref, name, description, service_type (one of: health, education, housing, transportation, employment, business, public_safety, utilities, recreation, social_services), online_url, eligibility_requirements, cost, contact_info}",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "capture": {
+            "description": "Optional: the page as your browser received it (via \"browser\") or as the user pasted it (via \"paste\"), when the server cannot fetch source_url. It is kept privately as evidence of what the user saw, not a fetch by the server, and shown to reviewers beside each claim it supports. Give exactly one of html_base64 or text, at most 2 MB decoded. A bad shape or a sha256 that does not match fails the call, and nothing is written.",
+            "properties": {
+              "captured_at": {
+                "description": "When it was captured, ISO 8601",
+                "type": "string"
+              },
+              "html_base64": {
+                "description": "The page HTML, base64",
+                "type": "string"
+              },
+              "sha256": {
+                "description": "SHA-256 of the decoded bytes (or the text as UTF-8), lowercase hex",
+                "type": "string"
+              },
+              "text": {
+                "description": "The page's text, when there is no HTML",
+                "type": "string"
+              },
+              "via": {
+                "enum": [
+                  "browser",
+                  "paste"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "sha256",
+              "captured_at",
+              "via"
+            ],
+            "type": "object"
+          },
+          "dry_run": {
+            "description": "Validate and match, then roll back. Default false",
+            "type": "boolean"
+          },
+          "jurisdiction_id": {
+            "description": "The jurisdiction (from set_location)",
+            "type": "integer"
+          },
+          "source_key": {
+            "description": "Registry key of the source this URL belongs to, e.g. municipal_official_sites, mtas_tn_city_profiles, local_news; see list_data_sources. Omitted, it is municipal_official_sites only when the source URL's host is the government's own: .gov, .mil, a state .us host (ci.vacaville.ca.us), or the jurisdiction's website or registered domain. Any other host (news, directories, vendors, nixle.us) without a source_key is an error naming the host.",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "The page the payload was read from. An item cites its own source_url, then its enclosing parent's, then this one. Any item may also carry source_url, and field_sources ({field: url}) for fields read on another page.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jurisdiction_id"
+        ],
+        "type": "object"
+      },
+      "name": "import_jurisdiction"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Deterministically import a CivicPlus (CivicEngage) staff directory: top-level departments become agencies named \"<Place> <label>\" verbatim, the governing-body entry becomes a jurisdiction-level body, and sub-units and deny-listed labels are skipped and reported. Pass the rendered /directory.aspx HTML (fetch it with priv/scripts/civicplus_import.mjs, which posts it here directly; don't paste it through a model). DRY RUN BY DEFAULT: the report diffs against what exists (would_create, existing, existing_name for naming divergences, existing_not_in_directory). Pass dry_run: false to write. Services are out of scope.",
+      "inputSchema": {
+        "properties": {
+          "base_url": {
+            "description": "Site root, e.g. https://www.hibbingmn.gov",
+            "type": "string"
+          },
+          "deny": {
+            "description": "Extra label substrings to skip (case-insensitive)",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dry_run": {
+            "description": "Default true. false writes the import",
+            "type": "boolean"
+          },
+          "html": {
+            "description": "Rendered HTML of <base_url>/directory.aspx",
+            "type": "string"
+          },
+          "include_nested": {
+            "description": "Default false. true also imports nested sub-units as agencies",
+            "type": "boolean"
+          },
+          "jurisdiction_id": {
+            "description": "The jurisdiction the directory belongs to",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "jurisdiction_id",
+          "base_url",
+          "html"
+        ],
+        "type": "object"
+      },
+      "name": "import_civicplus_directory"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Check the status of one or more proposed changes by their change IDs. Returns current status (pending, approved, published, rejected) for each. Use this to track contributions after submitting them.",
+      "inputSchema": {
+        "properties": {
+          "change_ids": {
+            "description": "One or more change_id values returned by propose_change",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "change_ids"
+        ],
+        "type": "object"
+      },
+      "name": "get_change_status"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Submit the result of a sourcing task. Use this after completing a task returned by get_pending_tasks. Each key in data is a field of the task's entity (e.g. phone, website_url), proposed as one pending change citing evidence.source_url. All fields are validated first; an unknown field fails the call, writes nothing, and lists the valid fields.",
+      "inputSchema": {
+        "properties": {
+          "data": {
+            "description": "Field => value for the task's entity, e.g. {\"phone\": \"707-449-5100\"}",
+            "type": "object"
+          },
+          "evidence": {
+            "description": "Required for success/partial: {\"source_url\": the page the values were read from}. Optional source_key (see list_data_sources); required unless source_url is on a .gov, .mil or state .us host or the jurisdiction's own website or domain.",
+            "type": "object"
+          },
+          "failure_reason": {
+            "description": "If status is 'failed', the reason why",
+            "type": "string"
+          },
+          "status": {
+            "description": "Whether the task was completed successfully",
+            "enum": [
+              "success",
+              "partial",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "task_id": {
+            "description": "The task ID from the sourcing queue",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "submit_sourcing_result"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Delete a civic entity by type and ID. Admin only. Deletes the entity and its dependent records (tenures, etc). Use search tools first to confirm the entity is the right one.",
+      "inputSchema": {
+        "properties": {
+          "entity_id": {
+            "description": "The numeric ID of the entity to delete",
+            "type": "integer"
+          },
+          "entity_type": {
+            "description": "The type of entity to delete",
+            "enum": [
+              "agency",
+              "body",
+              "service",
+              "position",
+              "person",
+              "tenure"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why this entity is being deleted (e.g. 'duplicate of #123', 'test data')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "entity_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "delete_entity"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Merge duplicate entities of the same type. Admin only. Keeps the primary entity, moves every row that references the duplicate (tenures, seats, meetings, images, domains, services...) to the primary, records a merged_into change event, then deletes the duplicate. All or nothing: rows that would collide with the primary's (the same tenure, image or meeting on both) refuse the merge and are listed. Agencies merge only within one jurisdiction: one agency with offices in many places (a federal department's field offices) is one agency whose offices are its locations (agency_locations), not separate agencies to merge.",
+      "inputSchema": {
+        "properties": {
+          "entity_type": {
+            "description": "The type of entities being merged",
+            "enum": [
+              "person",
+              "position",
+              "agency",
+              "body"
+            ],
+            "type": "string"
+          },
+          "keep_id": {
+            "description": "ID of the entity to keep (the primary)",
+            "type": "integer"
+          },
+          "merge_id": {
+            "description": "ID of the duplicate entity to merge into the primary and then delete",
+            "type": "integer"
+          },
+          "reason": {
+            "description": "Why these are being merged (e.g. 'same person, imported twice')",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_type",
+          "keep_id",
+          "merge_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "merge_entities"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Fetch a public web page and return its HTML content for data extraction. Requires an authenticated API token. Allowed: .gov, .mil, .us, .com, .org and .net domains, plus select agenda-platform domains; other domains are refused. A fetch has an overall limit of 60 seconds and then returns a timeout error. A page that renders no visible text (e.g. a JavaScript-only site) returns an empty-render error; ask the user to paste the page instead. On a local server with the Common Crawl page service, a captured copy is returned first, headed with its crawl and capture date; pass live: true for a fresh fetch (rosters, people). Scripts, styles and <nav> menus are removed; the page's <header> and <footer> stay, where a site names its government and gives its address, phone and email. A page over 40,000 characters comes in parts: each part ends with the offset of the next.",
+      "inputSchema": {
+        "properties": {
+          "live": {
+            "description": "Skip the Common Crawl copy and fetch the page now (default false)",
+            "type": "boolean"
+          },
+          "offset": {
+            "description": "Character offset to start from, for the next part of a long page (default 0)",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "url": {
+            "description": "URL to fetch (.gov/.mil/.us/.com/.org/.net or an allowed agenda-platform domain)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "name": "gather"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Submit a candidate image found on an official government web page: a person's photo (person_id), or a jurisdiction's seal, logo or flag (jurisdiction_id and kind). Only submit an image you saw on a page you fetched (never from search results). The image is fetched, stored privately and queued for admin review; it is not shown publicly. When the site blocks our server (the fetch fails with HTTP 403), send the bytes your browser received as image_base64 with image_sha256, and nothing is downloaded. License claims are ignored. Idempotent on (person_id, source_url) or (jurisdiction_id, kind, source_url): re-submitting updates the last-seen evidence.",
+      "inputSchema": {
+        "properties": {
+          "alt_text": {
+            "description": "The <img> alt text, verbatim",
+            "type": "string"
+          },
+          "caption": {
+            "description": "figcaption or nearby caption text, verbatim",
+            "type": "string"
+          },
+          "capture_ref": {
+            "description": "Id of the gather job/capture that saw the image (optional for MCP)",
+            "type": "string"
+          },
+          "discovered_at": {
+            "description": "ISO 8601 UTC time the page was captured, e.g. 2026-10-22T18:04:05Z",
+            "type": "string"
+          },
+          "face_box": {
+            "description": "Largest face as fractions (0-1) of the displayed image: {x, y, w, h}, x/y = top-left",
+            "type": "object"
+          },
+          "face_count": {
+            "description": "Faces detected in a person's photo",
+            "type": "integer"
+          },
+          "image_base64": {
+            "description": "Optional: the image bytes as your browser received them from source_url, base64. Keep it small (the JSON request is capped near 8 MB); send larger files to POST /api/v1/people/:person_id/images as multipart (25 MB)",
+            "type": "string"
+          },
+          "image_sha256": {
+            "description": "SHA-256 of the decoded image bytes, lowercase hex; required with image_base64",
+            "type": "string"
+          },
+          "jurisdiction_id": {
+            "description": "Jurisdiction whose seal, logo or flag this is (or give person_id)",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Required with jurisdiction_id; a person's image needs no kind",
+            "enum": [
+              "seal",
+              "logo",
+              "flag"
+            ],
+            "type": "string"
+          },
+          "person_id": {
+            "description": "Jurisdictional person id the photo is of (or give jurisdiction_id)",
+            "type": "integer"
+          },
+          "source_page_url": {
+            "description": "Absolute http(s) URL of the page the image appeared on",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "Absolute http(s) URL of the image file",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_url",
+          "source_page_url",
+          "discovered_at"
+        ],
+        "type": "object"
+      },
+      "name": "submit_image"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Get processing/review status and approved public image URLs for an image you submitted. Admins may inspect any image. Private storage keys are omitted.",
+      "inputSchema": {
+        "properties": {
+          "image_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "image_id"
+        ],
+        "type": "object"
+      },
+      "name": "get_image"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Compares every schema belongs_to with the live database: whether its foreign key constraint exists, and how many rows point at no row. Also lists tables without a primary key.",
+      "inputSchema": {
+        "properties": {
+          "only_problems": {
+            "description": "Default true: list only foreign keys that are missing or have orphans",
+            "type": "boolean"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_integrity_report"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Lists bodies attached to an agency, the candidates for dropping the link now that a council or board can belong to its jurisdiction alone. Changes nothing.",
+      "inputSchema": {
+        "properties": {
+          "governing_only": {
+            "description": "Default true: only bodies named like a governing body (council, board of trustees, ...)",
+            "type": "boolean"
+          },
+          "limit": {
+            "description": "Default 200",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Default 0",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_body_agency_links"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Per level, how many jurisdictions exist and how many carry an Open Civic Data id (ocd_id), against the expected minimums of the OCD import. Also summarizes special districts from the 2022 Census of Governments (how many have a county, website, boundary, ocd_id; counts by Census function). Use after running the OCD or Census imports to confirm the end state.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_identifier_coverage"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Lists the special districts the 2022 Census of Governments assigns to a county (its headquarters or most-served county; these districts have no boundaries yet), with Census function and whether a boundary exists.",
+      "inputSchema": {
+        "properties": {
+          "county_id": {
+            "description": "Jurisdiction id of the county",
+            "type": "integer"
+          },
+          "ocd_id": {
+            "description": "The county's OCD id instead, e.g. ocd-division/country:us/state:ca/county:solano",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_county_special_districts"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Exact counts, in one SQL query, of jurisdictions at a level (default place), optionally in one state: total, with at least one agency, with at least one body, with at least one service, and with an active coverage gap. Use this instead of paging the API to measure coverage. incorporated_vs_cdp splits the same jurisdictions by Census TIGER CLASSFP: incorporated (C1-C3, C5-C9), census_designated (U1, U2, U5, M2), other, and unknown (no CLASSFP stored).",
+      "inputSchema": {
+        "properties": {
+          "level": {
+            "description": "Jurisdiction level. Default place.",
+            "type": "string"
+          },
+          "state": {
+            "description": "Two-letter state abbreviation (e.g. 'NY'). Omit for all states.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "get_coverage_stats"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. How many jurisdictions are governments, per 2022 Census of Governments category (federal, state, county, municipal, township, school_district, special_district), next to the Census 2022 count. Each category reports counted, excluded and unclassified rows with reasons; status is unclassified while any row cannot be decided. Rules and sources: Jurisdictional.Civic.GovernmentCount.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_government_count"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Marks a jurisdiction as attempted but blocked (Cloudflare challenge, no website, dead host, ...), so get_next_uncovered skips it until retry_after. Record what blocked you and the URL you tried. no_government is a row with nothing of its own to gather (a borough county inside New York City, a county merged with a city gathered under the other row): name the row that holds it, with its id, in detail, and set a distant retry_after.",
+      "inputSchema": {
+        "properties": {
+          "detail": {
+            "description": "What was tried and what happened",
+            "type": "string"
+          },
+          "evidence_url": {
+            "description": "The URL that was blocked or dead",
+            "type": "string"
+          },
+          "jurisdiction_id": {
+            "description": "ID of the jurisdiction",
+            "type": "integer"
+          },
+          "reason": {
+            "enum": [
+              "cloudflare_challenge",
+              "no_website",
+              "dead_host",
+              "parked_domain",
+              "takeover",
+              "blocked_403",
+              "no_department_links",
+              "temporarily_unavailable",
+              "no_government",
+              "other"
+            ],
+            "type": "string"
+          },
+          "retry_after": {
+            "description": "ISO date (YYYY-MM-DD) after which to try again. Default 90 days from today.",
+            "format": "date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jurisdiction_id",
+          "reason"
+        ],
+        "type": "object"
+      },
+      "name": "record_coverage_gap"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Records one check of whether a government publishes a dataset in a form we can import. district_boundaries: the districts a county board or city council is elected from (county and place jurisdictions). Statuses: layer_published (a queryable layer; needs url and district_field, the attribute holding the district number), webmap_only (in a web map with no query URL), pdf_only, image_only, service_blocked (403, sign-in or firewall: unconfirmed, not absent; needs url), not_found (needs notes saying where you looked). imported and unchecked are derived from the rows on file and cannot be recorded. Each call adds a row; the newest checked_at is the current one.",
+      "inputSchema": {
+        "properties": {
+          "checked_at": {
+            "description": "ISO 8601 datetime or date of the check. Default now.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "dataset": {
+            "enum": [
+              "district_boundaries"
+            ],
+            "type": "string"
+          },
+          "district_field": {
+            "description": "The layer attribute holding the district number",
+            "type": "string"
+          },
+          "jurisdiction_id": {
+            "description": "The county or place",
+            "type": "integer"
+          },
+          "method": {
+            "description": "How the check was made",
+            "enum": [
+              "scripted",
+              "browser",
+              "by_hand"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "description": "What was found and where you looked",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "layer_published",
+              "webmap_only",
+              "pdf_only",
+              "image_only",
+              "service_blocked",
+              "not_found"
+            ],
+            "type": "string"
+          },
+          "url": {
+            "description": "The layer URL, or the evidence page",
+            "type": "string"
+          }
+        },
+        "required": [
+          "jurisdiction_id",
+          "dataset",
+          "status",
+          "method"
+        ],
+        "type": "object"
+      },
+      "name": "record_dataset_check"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. The current status of every county and place a dataset concerns, a page at a time: imported (district rows on file, whatever the latest check said), else the latest check's status, else unchecked (it has seats naming a district number and no check). status filters on that current status. counts (by status) and by_state follow state and dataset but not status or paging. Each row has the jurisdiction's id, name, level, geoid, ocd_id and state, the latest check, the district rows on file, the district numbers its seats name, and a suggested outreach line where the data is published in a form we cannot import.",
+      "inputSchema": {
+        "properties": {
+          "dataset": {
+            "description": "Default district_boundaries",
+            "enum": [
+              "district_boundaries"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "description": "Default 50, at most 200",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Default 0",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Two-letter state, e.g. 'TX'. Optional.",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "layer_published",
+              "webmap_only",
+              "pdf_only",
+              "image_only",
+              "service_blocked",
+              "not_found",
+              "imported",
+              "unchecked"
+            ],
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_dataset_checks"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. What government domains really serve (parked pages, default pages, invalid HTTPS, off-site redirects, findings noted by hand), kept to report later: the latest probe date, counts per filter and review status, and how many findings link to a registry domain with a security contact. Not for publication: CISA's .gov team sees the parked list first.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_domain_health"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Lists domain-health findings for one filter, a page at a time, with each domain's organization, verdict, landing host, page title, review status and the registry's security contact. Probe filters show the latest probe run only. When more remain, next_offset names the offset for the next page.",
+      "inputSchema": {
+        "properties": {
+          "filter": {
+            "enum": [
+              "parked",
+              "default_page",
+              "https_invalid",
+              "redirect_offsite",
+              "manual",
+              "to_report",
+              "reported",
+              "watching",
+              "dismissed"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "description": "Default 25, at most 100",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Rows to skip, for paging. Default 0",
+            "type": "integer"
+          },
+          "state": {
+            "description": "Two-letter state, e.g. 'CA'. Optional.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "filter"
+        ],
+        "type": "object"
+      },
+      "name": "list_domain_observations"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Notes a domain finding seen by hand, e.g. a redirect loop only a browser shows. Any host, not just .gov. One note per domain per day. Say what was seen (evidence) and who saw it and how (source).",
+      "inputSchema": {
+        "properties": {
+          "domain_name": {
+            "description": "Domain or URL, e.g. www.example.org",
+            "type": "string"
+          },
+          "evidence": {
+            "description": "What was seen",
+            "type": "string"
+          },
+          "observed_on": {
+            "description": "Default today",
+            "format": "date",
+            "type": "string"
+          },
+          "organization_name": {
+            "type": "string"
+          },
+          "source": {
+            "description": "Who saw it, and how",
+            "type": "string"
+          },
+          "state": {
+            "description": "Two-letter state",
+            "type": "string"
+          },
+          "verdict": {
+            "enum": [
+              "redirect_loop",
+              "suspicious_redirect",
+              "lapsed_takeover",
+              "parked",
+              "default_page",
+              "other"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "domain_name",
+          "verdict",
+          "evidence",
+          "source"
+        ],
+        "type": "object"
+      },
+      "name": "record_domain_observation"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Sets what to do about a finding: to_report, reported, watching or dismissed, with an optional note (e.g. who it was reported to).",
+      "inputSchema": {
+        "properties": {
+          "id": {
+            "description": "Observation id from list_domain_observations",
+            "type": "integer"
+          },
+          "note": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "to_report",
+              "reported",
+              "watching",
+              "dismissed"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "review_domain_observation"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. The registry of outside data sources (docs/SOURCES.md): tier, roles, access, cadence, notes, and each source's latest snapshot (when it was last pulled, the URL, row count and measured stats), and usage: how many jurisdictions, agencies, bodies, people, services and domains are linked to it.",
+      "inputSchema": {
+        "properties": {
+          "key": {
+            "description": "One source key, e.g. cisa_dotgov. Omit for all.",
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_data_sources"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Records one fetch or run of a registered data source: the exact URL fetched, when, and what was measured. Use after pulling a dataset or finishing a discovery run.",
+      "inputSchema": {
+        "properties": {
+          "artifact_location": {
+            "description": "S3 key or path of the kept copy",
+            "type": "string"
+          },
+          "checksum": {
+            "description": "sha256 of the fetched file, hex",
+            "type": "string"
+          },
+          "fetched_at": {
+            "description": "ISO 8601 datetime or date of the fetch. Default now.",
+            "type": "string"
+          },
+          "key": {
+            "description": "Source key, e.g. cisa_dotgov",
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "row_count": {
+            "type": "integer"
+          },
+          "stats": {
+            "description": "Measured outcomes, e.g. {\"ok\": 10402, \"parked\": 496}",
+            "type": "object"
+          },
+          "url": {
+            "description": "The exact URL fetched",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "url"
+        ],
+        "type": "object"
+      },
+      "name": "record_source_snapshot"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Records that a person left a seat: sets the tenure's end_date. Requires the page that shows it (a new roster, a resignation notice). Fails if the tenure has already ended. Tenure ids are in get_body_details.",
+      "inputSchema": {
+        "properties": {
+          "end_date": {
+            "description": "ISO-8601 date (YYYY-MM-DD) the person left",
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "source_url": {
+            "description": "The page that shows the seat changed",
+            "type": "string"
+          },
+          "tenure_id": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tenure_id",
+          "end_date",
+          "source_url"
+        ],
+        "type": "object"
+      },
+      "name": "end_tenure"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes unless dry_run. Brings a body's seat holders in line with its published roster. Per seat: confirm (same person; refreshes verified_on), fill (empty seat), replace (ends the old tenure, records the new holder), vacate (only seats in vacant_position_ids), vacant (in vacant_position_ids with no holder; nothing to end), unlisted (not on the roster; left unchanged, never ended implicitly). dry_run defaults to true: run it first and read the plan. All or nothing.",
+      "inputSchema": {
+        "properties": {
+          "as_of": {
+            "description": "ISO-8601 date the roster was read",
+            "type": "string"
+          },
+          "body_id": {
+            "type": "integer"
+          },
+          "dry_run": {
+            "description": "Default true",
+            "type": "boolean"
+          },
+          "members": {
+            "items": {
+              "properties": {
+                "first_name": {
+                  "type": "string"
+                },
+                "last_name": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "position_id": {
+                  "type": "integer"
+                },
+                "start_date": {
+                  "description": "ISO-8601, only when published",
+                  "type": "string"
+                },
+                "term_ends_on": {
+                  "description": "ISO-8601, only when published",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "position_id"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "source_key": {
+            "description": "Registry key of the source this URL belongs to, e.g. municipal_official_sites, mtas_tn_city_profiles, local_news; see list_data_sources. Omitted, it is municipal_official_sites only when the source URL's host is the government's own: .gov, .mil, a state .us host (ci.vacaville.ca.us), or the jurisdiction's website or registered domain. Any other host (news, directories, vendors, nixle.us) without a source_key is an error naming the host.",
+            "type": "string"
+          },
+          "source_url": {
+            "description": "The roster page that was read",
+            "type": "string"
+          },
+          "vacant_position_ids": {
+            "description": "Seats the roster shows as vacant",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "body_id",
+          "source_url",
+          "as_of",
+          "members"
+        ],
+        "type": "object"
+      },
+      "name": "reconcile_roster"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Approves a fetched image as you, the reviewer, the same as /admin/images: records the license and its evidence, then approves. A displayable license (public-domain-us-gov, public-domain-ca-gov, public-domain-fl-gov, government-published-headshot) publishes it wherever the person appears. CA/FL: only for a city or county site (not a school district or college) whose page credits no photographer. government-published-headshot: any other state's official headshot on the government's own roster page, no photographer credited; not a public-domain claim; attribution (the government, e.g. \"City of Austin\") is required.",
+      "inputSchema": {
+        "properties": {
+          "attribution": {
+            "description": "Required for CC-BY and government-published-headshot",
+            "type": "string"
+          },
+          "image_id": {
+            "description": "From submit_image",
+            "type": "integer"
+          },
+          "license": {
+            "enum": [
+              "unknown",
+              "public-domain",
+              "public-domain-us-gov",
+              "public-domain-ca-gov",
+              "public-domain-fl-gov",
+              "government-published-headshot",
+              "CC0-1.0",
+              "CC-BY-2.0",
+              "CC-BY-3.0",
+              "CC-BY-4.0",
+              "CC-BY-SA-2.0",
+              "CC-BY-SA-3.0",
+              "CC-BY-SA-4.0"
+            ],
+            "type": "string"
+          },
+          "license_evidence": {
+            "description": "The rule or URL relied on, e.g. \"CA public record, City of Vacaville\"",
+            "type": "string"
+          },
+          "photographer_credit": {
+            "description": "Optional credit line shown as \"Photo: <credit>\" beside the attribution. When omitted, taken from the file's embedded credit (get_image embedded_credit: IPTC Credit, then By-line, then EXIF Artist, then Copyright). An empty string or null means no credit: the embedded one is not used.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "license",
+          "license_evidence"
+        ],
+        "type": "object"
+      },
+      "name": "approve_image"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Sets, corrects or clears the photographer credit line on an approved image, shown as \"Photo: <credit>\" beside the government attribution. Recorded as a published change on the image's person or jurisdiction.",
+      "inputSchema": {
+        "properties": {
+          "image_id": {
+            "type": "integer"
+          },
+          "photographer_credit": {
+            "description": "E.g. \"Lea Rhea Photography, LLC\". Required; an empty string or null clears the credit.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id"
+        ],
+        "type": "object"
+      },
+      "name": "update_image_credit"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only; writes when dry_run is false. Links a county board's or city council's \"District N\" seats to the district boundaries that elect them (sets each seat's electing_jurisdiction_id), so an address's representative is its own district's seat. The board keeps all its members; at-large seats (a mayor) are left alone. Fill only; each link is recorded as an applied change. Needs the districts imported. Dry run by default: returns the plan.",
+      "inputSchema": {
+        "properties": {
+          "dry_run": {
+            "description": "Default true: report the plan, write nothing",
+            "type": "boolean"
+          },
+          "parent_geoid": {
+            "description": "The county's 5-digit or the city's 7-digit Census geoid, e.g. \"0681554\" (Vacaville)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "parent_geoid"
+        ],
+        "type": "object"
+      },
+      "name": "link_district_seats"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. The propose_change rows awaiting review (the queue at /admin/contributions), oldest first: each change's id, entity, field, old and new value, source_url, data source key and tier, submitter and created time. jurisdiction_id narrows to changes on the jurisdiction and its agencies, bodies, places, services and positions. Review one with review_change.",
+      "inputSchema": {
+        "properties": {
+          "entity_id": {
+            "type": "integer"
+          },
+          "entity_type": {
+            "enum": [
+              "jurisdiction",
+              "agency",
+              "body",
+              "service",
+              "position",
+              "person",
+              "place",
+              "page"
+            ],
+            "type": "string"
+          },
+          "jurisdiction_id": {
+            "type": "integer"
+          },
+          "limit": {
+            "description": "Default 25, at most 100",
+            "type": "integer"
+          },
+          "offset": {
+            "description": "Default 0",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "name": "list_pending_changes"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Reviews one pending change as /admin/contributions does. approve marks it approved, then publishes it: the new value is written to the entity. reject marks it rejected with the reason (required). A change whose field cannot be applied stays approved and the error names why.",
+      "inputSchema": {
+        "properties": {
+          "change_id": {
+            "description": "The change's id, from list_pending_changes",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "approve",
+              "reject"
+            ],
+            "type": "string"
+          },
+          "reason": {
+            "description": "Required to reject: why. On approve, kept as the reviewer's notes.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "change_id",
+          "decision"
+        ],
+        "type": "object"
+      },
+      "name": "review_change"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. A meeting-pull worker claims up to `limit` due meeting feeds of one vendor, each a body's feed with the config needed to fetch it. A claim is a lease of 2 hours: submit_meeting_pull before it runs out, or the feed is claimable again. Two workers never get the same feed.",
+      "inputSchema": {
+        "properties": {
+          "lease_owner": {
+            "description": "This worker's id, e.g. gather_ex:<host>:<pid>. Never an email.",
+            "type": "string"
+          },
+          "limit": {
+            "description": "Default 10, at most 100",
+            "type": "integer"
+          },
+          "vendor": {
+            "enum": [
+              "legistar",
+              "granicus",
+              "escribe",
+              "ogenda"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "vendor",
+          "lease_owner"
+        ],
+        "type": "object"
+      },
+      "name": "claim_meeting_sources"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Admin only, writes. Posts a claimed feed's result. With `meetings`, upserts them all in one transaction on (body_id, external_id) and reschedules the feed: a known meeting gains its new status, times and URLs, and a URL on file is never blanked. With `error`, records the failure and reschedules. Refused unless lease_owner holds a live lease on the feed; nothing is written when any meeting is invalid.",
+      "inputSchema": {
+        "properties": {
+          "error": {
+            "description": "Instead of meetings: why the feed could not be pulled",
+            "type": "string"
+          },
+          "lease_owner": {
+            "description": "The lease_owner that claimed it",
+            "type": "string"
+          },
+          "meetings": {
+            "description": "Every meeting the feed lists. Each: {external_id (required; legistar:<client>:<EventId>, granicus:<site>:<clip_id> or granicus:<site>:event:<event_id>, escribe:<host>:<guid>, ogenda:<meeting_id>), name, start_time (ISO-8601, required; from the listing, never defaulted), end_time, status (scheduled, in_progress, completed, cancelled, postponed), timezone, description, source_url, agenda_url, minutes_url, video_url, cancelled_at, resources, items}. resources: [{kind (agenda, packet, minutes, staff_report, attachment, video, transcript, clip), url, note, media_type (IANA), external_id, checksum (sha256:<hex>), retrieved_at}]; a meeting URL not given is taken from its one resource of that kind (agenda, minutes, video). items: [{external_id (required, e.g. the Legistar EventItemId), item_number, title, description, display_order, item_type, resources}]. Resources and items upsert; none is deleted.",
+            "items": {
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "source_id": {
+            "description": "The feed's id, from claim_meeting_sources",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_id",
+          "lease_owner"
+        ],
+        "type": "object"
+      },
+      "name": "submit_meeting_pull"
+    },
+    {
+      "annotations": {
+        "readOnlyHint": true
+      },
+      "description": "Admin only, read-only. Bodies that have meetings but no meeting feed (most meetings first), and feeds whose last pull failed, with the error.",
+      "inputSchema": {
+        "properties": {},
+        "type": "object"
+      },
+      "name": "get_meeting_source_coverage"
     }
   ]
 }

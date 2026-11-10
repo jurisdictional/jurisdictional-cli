@@ -1,19 +1,24 @@
 {
+  "authorization_endpoint": "https://jurisdictional.org/oauth/authorize",
+  "authorization_response_iss_parameter_supported": true,
+  "code_challenge_methods_supported": [
+    "S256"
+  ],
+  "device_authorization_endpoint": "https://jurisdictional.org/api/v1/auth/device",
   "grant_types_supported": [
-    "password",
-    "refresh_token"
+    "authorization_code",
+    "urn:ietf:params:oauth:grant-type:device_code"
   ],
   "issuer": "https://jurisdictional.org",
-  "response_types_supported": [
-    "token"
+  "response_modes_supported": [
+    "query"
   ],
-  "scopes_supported": [
-    "read",
-    "write"
+  "response_types_supported": [
+    "code"
   ],
   "service_documentation": "https://jurisdictional.org/llms.txt",
   "token_endpoint": "https://jurisdictional.org/api/v1/auth/token",
   "token_endpoint_auth_methods_supported": [
-    "client_secret_post"
+    "none"
   ]
 }

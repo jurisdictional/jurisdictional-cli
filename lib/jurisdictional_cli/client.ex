@@ -67,6 +67,23 @@ defmodule JurisdictionalCli.Client do
     end
   end
 
+  @doc "The API origin this invocation talks to, from --host, JURISDICTIONAL_HOST or the default."
+  def resolve_host(opts, globals), do: host(opts, globals)
+
+  @doc """
+  The absolute URL a request goes to, with the query encoded by Req's own params step,
+  so it matches what was sent byte for byte.
+  """
+  def request_url(host, path, query) do
+    params = Map.new(query || %{}, fn {key, value} -> {to_string(key), to_string(value)} end)
+
+    [url: host <> path, params: params]
+    |> Req.new()
+    |> Req.Steps.put_params()
+    |> Map.fetch!(:url)
+    |> URI.to_string()
+  end
+
   defp host(opts, globals) do
     raw = chosen_host(opts, globals)
     host = String.trim_trailing(raw, "/")
@@ -304,6 +321,8 @@ defmodule JurisdictionalCli.Client do
         headers: headers,
         decode_body: false,
         retry: false,
+        # A saved file records the URL that produced it, so --save never follows a redirect.
+        redirect: is_nil(session.globals.save),
         receive_timeout: 60_000,
         connect_options: [timeout: 5_000]
       ]

@@ -2,8 +2,12 @@
 
 These files are public responses from https://jurisdictional.org.
 They were written by `jurisdictional --save responses`.
-`index.json` names the method, path, query, status, and file for each one.
+`index.json` names the method, path, query, status, file, `url`, `sha256`, and `captured_at` for each one.
+`url` is the exact address that produced the file; `--save` does not follow redirects.
 The file is the response body, unchanged aside from pretty-printed JSON.
+`sha256` covers the pretty-printed file as written, not the bytes the server sent, so `shasum -a 256 FILE` checks it.
+`license` appears only when the response declared one in a `Link: rel="license"` header.
+It is copied as given and never inferred.
 Another app can read the index and then open the file.
 
 The example place is Vacaville, California.

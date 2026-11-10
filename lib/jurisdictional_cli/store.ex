@@ -8,14 +8,17 @@ defmodule JurisdictionalCli.Store do
 
   @description "Raw response bodies. Each entry is the request that produced the file."
 
-  def put(dir, %{
-        method: method,
-        path: path,
-        query: query,
-        status: status,
-        body: body,
-        captured_at: captured_at
-      })
+  def put(
+        dir,
+        %{
+          method: method,
+          path: path,
+          query: query,
+          status: status,
+          body: body,
+          captured_at: captured_at
+        } = capture
+      )
       when is_binary(dir) and is_binary(body) do
     method = String.upcase(method)
     query = stringify(query)
@@ -27,15 +30,19 @@ defmodule JurisdictionalCli.Store do
 
       with :ok <- File.mkdir_p(dir),
            {:ok, entries} <- read_index(Path.join(dir, "index.json")),
-           :ok <- write_body(Path.join(dir, relative), body) do
-        entry = %{
-          "method" => method,
-          "path" => path,
-          "query" => query,
-          "status" => status,
-          "file" => relative,
-          "captured_at" => captured_at
-        }
+           {:ok, sha256} <- write_body(Path.join(dir, relative), body) do
+        entry =
+          %{
+            "method" => method,
+            "path" => path,
+            "query" => query,
+            "status" => status,
+            "file" => relative,
+            "captured_at" => captured_at,
+            "sha256" => sha256
+          }
+          |> put_present("url", capture[:url])
+          |> put_present("license", capture[:license])
 
         entries =
           entries
@@ -153,7 +160,47 @@ defmodule JurisdictionalCli.Store do
         _ -> ensure_newline(body)
       end
 
-    atomic_write(path, body)
+    # The digest covers these exact bytes, so `shasum -a 256 FILE` checks it.
+    with :ok <- atomic_write(path, body) do
+      {:ok, :crypto.hash(:sha256, body) |> Base.encode16(case: :lower)}
+    end
+  end
+
+  defp put_present(entry, _key, nil), do: entry
+  defp put_present(entry, key, value), do: Map.put(entry, key, value)
+
+  @doc """
+  The target of the response's `rel="license"` link (RFC 8288), resolved against `url`.
+  Returns `:none` without one, and `:ambiguous` when there is more than one, so the
+  caller never picks a license for the data.
+  """
+  def license_link(headers, url) do
+    targets =
+      for {name, value} <- headers,
+          String.downcase(name) == "link",
+          {target, params} <- parse_links(value),
+          "license" in rels(params),
+          uniq: true,
+          do: URI.merge(url, target) |> URI.to_string()
+
+    case targets do
+      [] -> :none
+      [target] -> {:ok, target}
+      _ -> :ambiguous
+    end
+  end
+
+  defp parse_links(value) do
+    ~r/<([^>]*)>((?:\s*;\s*[^;,=\s]+(?:\s*=\s*(?:"[^"]*"|[^;,\s]*))?)*)/
+    |> Regex.scan(value, capture: :all_but_first)
+    |> Enum.map(fn [target, params] -> {String.trim(target), params} end)
+  end
+
+  defp rels(params) do
+    ~r/;\s*rel\s*=\s*(?:"([^"]*)"|([^;,\s]+))/i
+    |> Regex.scan(params, capture: :all_but_first)
+    |> Enum.flat_map(fn groups -> groups |> Enum.join(" ") |> String.split() end)
+    |> Enum.map(&String.downcase/1)
   end
 
   defp write_index(dir, entries) do

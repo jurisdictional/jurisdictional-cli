@@ -22,7 +22,9 @@ defmodule JurisdictionalCli.StoreTest do
     assert File.read!(Path.join(dir, "get/api/v1/jurisdictions/70118.json")) =~ "\n  "
 
     index = Jason.decode!(File.read!(Path.join(dir, "index.json")))
+    written = File.read!(Path.join(dir, "get/api/v1/jurisdictions/70118.json"))
 
+    # No url or license was given, so neither key appears.
     assert index["entries"] == [
              %{
                "method" => "GET",
@@ -30,7 +32,8 @@ defmodule JurisdictionalCli.StoreTest do
                "query" => %{},
                "status" => 200,
                "file" => "get/api/v1/jurisdictions/70118.json",
-               "captured_at" => "2026-11-09T12:00:00Z"
+               "captured_at" => "2026-11-09T12:00:00Z",
+               "sha256" => :crypto.hash(:sha256, written) |> Base.encode16(case: :lower)
              }
            ]
   end
@@ -138,5 +141,39 @@ defmodule JurisdictionalCli.StoreTest do
     File.mkdir_p!(dir)
     ExUnit.Callbacks.on_exit(fn -> File.rm_rf!(dir) end)
     dir
+  end
+
+  describe "license_link/2" do
+    @base "https://jurisdictional.org/api/v1/agencies?jurisdiction_id=70118"
+
+    test "finds rel=license among several links and resolves it" do
+      headers = [
+        {"link", ~s(</api/v1/agencies?offset=100>; rel="next", </license>; rel="license")}
+      ]
+
+      assert Store.license_link(headers, @base) == {:ok, "https://jurisdictional.org/license"}
+    end
+
+    test "reads rel as a space-separated, case-insensitive list, and across header lines" do
+      headers = [
+        {"link", ~s(<https://example.org/a>; rel="next")},
+        {"Link",
+         ~s(<https://creativecommons.org/publicdomain/zero/1.0/>; rel="copyright LICENSE")}
+      ]
+
+      assert Store.license_link(headers, @base) ==
+               {:ok, "https://creativecommons.org/publicdomain/zero/1.0/"}
+    end
+
+    test "is :none without a license link and :ambiguous with two different ones" do
+      assert Store.license_link([], @base) == :none
+      assert Store.license_link([{"link", ~s(</x>; rel="next")}], @base) == :none
+
+      two = [{"link", ~s(</a>; rel="license", </b>; rel=license)}]
+      assert Store.license_link(two, @base) == :ambiguous
+
+      same = [{"link", ~s(</a>; rel="license", </a>; rel=license)}]
+      assert Store.license_link(same, @base) == {:ok, "https://jurisdictional.org/a"}
+    end
   end
 end

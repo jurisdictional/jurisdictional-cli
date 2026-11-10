@@ -1635,7 +1635,7 @@ defmodule JurisdictionalCli do
       {:ok, status, body, headers} ->
         note_rate_limit(opts, headers)
         write_body(opts, body, globals.json or not opts[:tty?])
-        saved = save_response(opts, globals, request, status, body)
+        saved = save_response(opts, globals, request, {status, body, headers})
 
         cond do
           status == 401 ->
@@ -1658,9 +1658,25 @@ defmodule JurisdictionalCli do
 
   defp refuse_token_save(code, _opts, _globals), do: code
 
-  defp save_response(_opts, %{save: nil}, _request, _status, _body), do: :ok
+  defp save_response(_opts, %{save: nil}, _request, _response), do: :ok
 
-  defp save_response(opts, %{save: dir}, request, status, body) do
+  defp save_response(opts, %{save: dir} = globals, request, {status, body, headers}) do
+    {:ok, host} = Client.resolve_host(opts, globals)
+    url = Client.request_url(host, request.path, request.query)
+
+    license =
+      case Store.license_link(headers, url) do
+        {:ok, target} ->
+          target
+
+        :none ->
+          nil
+
+        :ambiguous ->
+          write(opts, :stderr, "the response names more than one license; not recording one\n")
+          nil
+      end
+
     saved =
       Store.put(dir, %{
         method: request.method,
@@ -1668,7 +1684,9 @@ defmodule JurisdictionalCli do
         query: request.query,
         status: status,
         body: body,
-        captured_at: DateTime.to_iso8601(opts[:now])
+        captured_at: DateTime.to_iso8601(opts[:now]),
+        url: url,
+        license: license
       })
 
     case saved do

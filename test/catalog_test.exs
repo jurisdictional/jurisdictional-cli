@@ -11,6 +11,13 @@ defmodule JurisdictionalCli.CatalogTest do
       assert File.regular?(path), entry["file"]
       raw = File.read!(path)
 
+      # Each entry is a receipt: the file still matches its digest, and names its URL.
+      assert entry["sha256"] == :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower),
+             "#{entry["file"]} no longer matches its sha256"
+
+      assert String.starts_with?(entry["url"], "https://jurisdictional.org" <> entry["path"]),
+             entry["file"]
+
       if entry["path"] == "/healthz" do
         assert String.trim(raw) == "ok"
       else
