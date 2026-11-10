@@ -333,6 +333,11 @@ defmodule JurisdictionalCli.Client do
   end
 
   defp maybe_body(options, body) when is_binary(body), do: Keyword.put(options, :body, body)
+
+  # Req sets the multipart content-type and boundary itself.
+  defp maybe_body(options, {:multipart, fields}),
+    do: Keyword.put(options, :form_multipart, fields)
+
   defp maybe_body(options, _body), do: options
 
   defp accept_header(profile) when profile in [nil, ""], do: "application/json"

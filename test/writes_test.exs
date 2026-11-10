@@ -101,6 +101,70 @@ defmodule JurisdictionalCli.WritesTest do
     end
   end
 
+  test "--image and --photo send a multipart file part to the upload paths" do
+    home = fresh_home()
+    png = Path.join(home, "headshot.png")
+    File.write!(png, <<137, 80, 78, 71, 13, 10, 26, 10, "fake png bytes">>)
+    jpg = Path.join(home, "seal.jpg")
+    File.write!(jpg, <<255, 216, 255, "fake jpg bytes">>)
+    digest = fn path -> :crypto.hash(:sha256, File.read!(path)) |> Base.encode16(case: :lower) end
+    parent = self()
+
+    cases = [
+      {["images", "person", "4", "--image", png, "--kind", "headshot", "--face-box", ~s({"x":1})],
+       "/api/v1/people/4/images", "image", png, "image/png",
+       %{"kind" => "headshot", "face_box" => ~s({"x":1}), "image_sha256" => digest.(png)}},
+      {["images", "jurisdiction", "70118", "--image", jpg, "--kind", "seal"],
+       "/api/v1/jurisdictions/70118/images", "image", jpg, "image/jpeg",
+       %{"kind" => "seal", "image_sha256" => digest.(jpg)}},
+      {["contributions", "quick", "--photo", jpg, "--entity-type", "person", "--entity-id", "4"],
+       "/api/v1/contributions/quick", "photo", jpg, "image/jpeg",
+       %{"entity_type" => "person", "entity_id" => "4"}}
+    ]
+
+    for {args, path, part, file, content_type, fields} <- cases do
+      {code, _out, err} =
+        invoke(args, home, fn bypass ->
+          Bypass.expect_once(bypass, "POST", path, fn conn ->
+            [type] = Plug.Conn.get_req_header(conn, "content-type")
+
+            conn =
+              Plug.Parsers.call(conn, Plug.Parsers.init(parsers: [:multipart], pass: ["*/*"]))
+
+            {upload, params} = Map.pop(conn.body_params, part)
+
+            send(
+              parent,
+              {:multipart, path, type, File.read!(upload.path), upload.filename,
+               upload.content_type, params}
+            )
+
+            Plug.Conn.resp(conn, 201, ~s({"ok":true}))
+          end)
+        end)
+
+      assert code == 0, "#{inspect(args)} exit #{code}: #{err}"
+      assert_received {:multipart, ^path, type, bytes, filename, ^content_type, params}
+      assert type =~ "multipart/form-data; boundary="
+      assert bytes == File.read!(file)
+      assert filename == Path.basename(file)
+      assert params == fields
+    end
+  end
+
+  test "an upload flag without a readable file exits 2 before any request" do
+    home = fresh_home()
+
+    for args <- [
+          ["images", "person", "4", "--image", Path.join(home, "missing.png")],
+          ["contributions", "quick", "--photo", home]
+        ] do
+      {code, _out, err} = invoke(args, home, fn _bypass -> :ok end)
+      assert code == 2, "#{inspect(args)} exit #{code}: #{err}"
+      assert err =~ "no file at"
+    end
+  end
+
   test "a write that needs a file exits 2 without one" do
     for args <- [
           ["gather", "submit"],

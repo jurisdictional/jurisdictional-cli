@@ -65,8 +65,10 @@ Browser pages, LiveView, the sitemap, the license page, and the labs stay in the
 The device approval page stays in the browser.
 Other OAuth redirects stay in the browser.
 A CORS preflight is not a command.
-An image file and a contribution photo go up as multipart, which this client does not send.
-A JSON image record, and a contribution without a photo, do go up.
+`images person ID --image PATH` and `images jurisdiction ID --image PATH` upload an image file.
+The client computes `image_sha256` from the file, which the server checks.
+`contributions quick --photo PATH` attaches a photo.
+Other flags go along as form fields; without a file, the body is JSON.
 `POST /api/v1/juricode` is the same call as `juricode`.
 Refreshing an access token happens inside the client.
 There is no `/api/v1` services resource.

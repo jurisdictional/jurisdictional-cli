@@ -44,11 +44,11 @@ defmodule JurisdictionalCli do
     me [jurisdictions|officials|contributions|feed|notifications]
     devices list|add|remove ID
     sync jurisdictions|officials
-    contributions quick
+    contributions quick [--photo PATH]
     gather submit
     tax import
     sourcing next|stats|results|generate
-    images get ID|person ID|jurisdiction ID
+    images get ID|person ID|jurisdiction ID   (--image PATH attaches a file)
     tools                          GET /api/mcp/tools
     tool NAME                      POST /api/mcp/execute
     message
@@ -1126,13 +1126,13 @@ defmodule JurisdictionalCli do
   defp account_route(_cmd, _parsed), do: :skip
 
   defp write_route("contributions", %{positionals: ["quick"], flags: flags}) do
-    with {:ok, body} <- json_body(flags) do
+    with {:ok, body} <- upload_body(flags, "photo") do
       {:ok, "POST", "/api/v1/contributions/quick", %{}, body}
     end
   end
 
   defp write_route("contributions", _parsed) do
-    {:error, "usage: jurisdictional contributions quick"}
+    {:error, "usage: jurisdictional contributions quick [--photo PATH]"}
   end
 
   defp write_route("gather", %{positionals: ["submit"], flags: flags}) do
@@ -1182,19 +1182,20 @@ defmodule JurisdictionalCli do
   end
 
   defp write_route("images", %{positionals: ["person", id], flags: flags}) do
-    with {:ok, body} <- json_body(flags) do
+    with {:ok, body} <- upload_body(flags, "image") do
       {:ok, "POST", "/api/v1/people/" <> encode_id(id) <> "/images", %{}, body}
     end
   end
 
   defp write_route("images", %{positionals: ["jurisdiction", id], flags: flags}) do
-    with {:ok, body} <- json_body(flags) do
+    with {:ok, body} <- upload_body(flags, "image") do
       {:ok, "POST", "/api/v1/jurisdictions/" <> encode_id(id) <> "/images", %{}, body}
     end
   end
 
   defp write_route("images", _parsed) do
-    {:error, "usage: jurisdictional images get ID|person ID|jurisdiction ID"}
+    {:error,
+     "usage: jurisdictional images get ID|person ID [--image PATH]|jurisdiction ID [--image PATH]"}
   end
 
   defp write_route("message", %{positionals: [], flags: flags}) do
@@ -1426,6 +1427,53 @@ defmodule JurisdictionalCli do
       {:ok, Jason.encode!(object)}
     end
   end
+
+  # With --image or --photo the body is multipart/form-data: the file part
+  # plus every other flag as a text field. Without it, the body stays JSON.
+  defp upload_body(flags, part) do
+    case Map.pop(flags, part) do
+      {nil, _flags} ->
+        json_body(flags)
+
+      {path, flags} ->
+        with {:ok, path} <- upload_path(part, path),
+             {:ok, object} <- object_from_file(flags) do
+          fields =
+            flags
+            |> Map.delete("file")
+            |> Enum.reduce(object, fn {key, value}, acc -> Map.put(acc, wire(key), value) end)
+            |> put_upload_digest(part, path)
+            |> Enum.sort()
+            |> Enum.map(fn {key, value} -> {key, form_value(value)} end)
+
+          {:ok, {:multipart, fields ++ [{part, File.stream!(path, 65_536)}]}}
+        end
+    end
+  end
+
+  defp upload_path(part, path) when is_binary(path) and path != "" do
+    if File.regular?(path),
+      do: {:ok, path},
+      else: {:error, "--#{part}: no file at #{path}"}
+  end
+
+  defp upload_path(part, _path), do: {:error, "--#{part} needs a file path"}
+
+  # The server checks image_sha256 against the bytes it receives.
+  defp put_upload_digest(fields, "image", path) do
+    Map.put_new_lazy(fields, "image_sha256", fn ->
+      path
+      |> File.stream!(65_536)
+      |> Enum.reduce(:crypto.hash_init(:sha256), &:crypto.hash_update(&2, &1))
+      |> :crypto.hash_final()
+      |> Base.encode16(case: :lower)
+    end)
+  end
+
+  defp put_upload_digest(fields, _part, _path), do: fields
+
+  defp form_value(value) when is_binary(value), do: value
+  defp form_value(value), do: Jason.encode!(value)
 
   defp json_value("true"), do: true
   defp json_value("false"), do: false
