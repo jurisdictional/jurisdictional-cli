@@ -17,6 +17,10 @@ defmodule JurisdictionalCli do
   @exit_network 3
   @exit_auth 4
 
+  # Registered public client for the browser sign-in (RFC 8628).
+  @client_id "jurisdictional-cli"
+  @device_grant "urn:ietf:params:oauth:grant-type:device_code"
+
   @usage """
   jurisdictional — client for the Jurisdictional HTTP API
 
@@ -35,7 +39,7 @@ defmodule JurisdictionalCli do
 
   This app, not the public record:
     activity                       search and contribution counts for the heatmap
-    login                          store a token from POST /api/v1/auth/token
+    login                          sign in with a browser
     logout                         DELETE /api/v1/auth/token and drop stored credentials
     me [jurisdictions|officials|contributions|feed|notifications]
     devices list|add|remove ID
@@ -63,6 +67,8 @@ defmodule JurisdictionalCli do
   A flag uses hyphens. The wire parameter uses underscores.
   juricode works with no token. login writes ~/.jurisdictional/credentials.json
   and leaves ~/.jurisdictional/token untouched.
+  login opens the browser and prints a short code.
+  --paste redeems the refresh token the approval page shows once.
   """
 
   def main(args) do
@@ -231,25 +237,35 @@ defmodule JurisdictionalCli do
   defp wire(flag), do: String.replace(flag, "-", "_")
 
   defp login(opts, globals, args) do
-    with {:ok, parsed} <- parse_cmd(args) do
+    if is_binary(globals.token) and globals.token != "" do
+      write(opts, :stderr, """
+      login does not take --token.
+      --token is a bearer for one command.
+      The approval page shows a refresh token. Run jurisdictional login --paste.
+      """)
+
+      @exit_usage
+    else
+      start_login(opts, globals, args)
+    end
+  end
+
+  defp start_login(opts, globals, args) do
+    with {:ok, parsed} <- parse_login(args) do
       cond do
         parsed.help ->
-          write(opts, :stdout, """
-          usage: jurisdictional login [--email ADDRESS]
-
-          Asks for your password and stores the token from POST /api/v1/auth/token.
-          The server's access token expires; the refresh token is stored beside it.
-          This does not write ~/.jurisdictional/token.
-          """)
-
+          write(opts, :stdout, login_help())
           @exit_ok
 
         parsed.positionals != [] ->
           write(opts, :stderr, "login takes no positional arguments\n")
           @exit_usage
 
+        parsed.paste ->
+          do_paste_login(opts, globals, parsed)
+
         true ->
-          do_login(opts, globals, parsed)
+          do_device_login(opts, globals, parsed)
       end
     else
       {:error, message} ->
@@ -258,57 +274,309 @@ defmodule JurisdictionalCli do
     end
   end
 
-  defp do_login(opts, globals, parsed) do
-    email = parsed.flags["email"] || read_line(opts, "email: ")
+  defp login_help do
+    """
+    usage: jurisdictional login [--no-browser]
+           jurisdictional login --paste
 
-    if email in [nil, ""] do
-      write(opts, :stderr, "email is required\n")
-      @exit_usage
+    Opens the browser and prints a short code.
+    You approve at /device while signed in.
+    The command checks back every few seconds and stores the access token and the refresh token.
+    --paste redeems the refresh token the approval page shows once.
+    That is for a terminal that cannot wait.
+    Type the token at the prompt, where it is not shown, or pipe it on stdin.
+    Whichever redeems the token first wins.
+    This does not write ~/.jurisdictional/token.
+    The device code and the tokens are not printed.
+    """
+  end
+
+  defp parse_login(args, parsed \\ empty_login())
+
+  defp parse_login([], parsed), do: {:ok, parsed}
+
+  defp parse_login(["--" | rest], parsed) do
+    {:ok, %{parsed | positionals: parsed.positionals ++ rest}}
+  end
+
+  defp parse_login([flag | rest], parsed) when flag in ["--help", "-h"] do
+    parse_login(rest, %{parsed | help: true})
+  end
+
+  defp parse_login(["--no-browser" | _], %{no_browser: true}),
+    do: {:error, "--no-browser given twice"}
+
+  defp parse_login(["--no-browser" | rest], parsed) do
+    parse_login(rest, %{parsed | no_browser: true})
+  end
+
+  defp parse_login(["--paste" | _], %{paste: true}), do: {:error, "--paste given twice"}
+
+  defp parse_login(["--paste" | rest], parsed) do
+    case rest do
+      [value | _] when value != "--" ->
+        if flag?(value) do
+          parse_login(rest, %{parsed | paste: true})
+        else
+          {:error,
+           "--paste takes no value. A token on the command line stays in shell history.
+" <>
+             "Type it at the prompt, or pipe it on stdin."}
+        end
+
+      _ ->
+        parse_login(rest, %{parsed | paste: true})
+    end
+  end
+
+  defp parse_login(["--" <> name | _], _parsed), do: {:error, "unknown flag --#{name}"}
+
+  defp parse_login(["-" <> _ = flag | _], _parsed), do: {:error, "unknown flag #{flag}"}
+
+  defp parse_login([arg | rest], parsed) do
+    parse_login(rest, %{parsed | positionals: parsed.positionals ++ [arg]})
+  end
+
+  defp empty_login do
+    %{
+      positionals: [],
+      help: false,
+      paste: false,
+      no_browser: false
+    }
+  end
+
+  defp do_device_login(opts, globals, parsed) do
+    name = device_name(opts)
+
+    with_host(opts, globals, fn session ->
+      case Client.post(
+             session,
+             "/api/v1/auth/device",
+             %{
+               "client_id" => @client_id,
+               "device_name" => name
+             }
+           ) do
+        {:ok, _session, 200, body, _headers} ->
+          begin_device_wait(opts, globals, session, parsed, name, body)
+
+        {:ok, _session, 404, _body, _} ->
+          write(
+            opts,
+            :stderr,
+            "This server does not offer browser sign-in yet. Pass --token, or set JURISDICTIONAL_TOKEN, on each command.\n"
+          )
+
+          @exit_response
+
+        {:ok, _session, _status, body, _} ->
+          write(opts, :stderr, device_error_text(body))
+          @exit_response
+
+        {:network, reason} ->
+          write(opts, :stderr, "request failed: #{inspect(reason)}\n")
+          @exit_network
+
+        {:error, code, message} ->
+          write(opts, :stderr, message)
+          code
+      end
+    end)
+  end
+
+  # Prints the page and the user code, then polls.
+  # The device code stays in memory and is never written to the terminal.
+  defp begin_device_wait(opts, globals, session, parsed, name, body) do
+    case Jason.decode(body) do
+      {:ok,
+       %{
+         "device_code" => device_code,
+         "user_code" => user_code,
+         "verification_uri" => uri
+       } = data}
+      when is_binary(device_code) and device_code != "" and is_binary(user_code) and
+             user_code != "" and is_binary(uri) and uri != "" ->
+        write(opts, :stderr, "Sign in at #{uri}\nCode: #{user_code}\nDevice: #{name}\n\n")
+        open_device_page(opts, parsed, data)
+        write(opts, :stderr, "Waiting for approval.\n")
+
+        device_code
+        |> poll_device(opts, session, interval_of(data), expires_of(data), 0, 0)
+        |> finish_device(opts, globals)
+
+      _ ->
+        write(opts, :stderr, "sign-in response had no code\n")
+        @exit_response
+    end
+  end
+
+  defp open_device_page(opts, parsed, data) do
+    if parsed.no_browser do
+      :ok
     else
-      # The draft reads the password with echo. A later pass can hide it on a TTY.
-      password = read_line(opts, "password: ")
+      url = data["verification_uri_complete"] || data["verification_uri"]
 
-      if password in [nil, ""] do
-        write(opts, :stderr, "password is required\n")
-        @exit_usage
-      else
-        write(opts, :stderr, "signing in\n")
+      case open_browser(opts, url) do
+        :ok ->
+          :ok
 
-        with_host(opts, globals, fn session ->
-          case Client.post(
-                 session,
-                 "/api/v1/auth/token",
-                 %{
-                   "email" => email,
-                   "password" => password,
-                   "device_id" => "jurisdictional-cli"
-                 }
-               ) do
-            {:ok, _session, 200, body, _headers} ->
-              opts
-              |> store_login(email, body)
-              |> refuse_token_save(opts, globals)
-
-            {:ok, _session, 401, body, _} ->
-              write(opts, :stderr, "The email or password was not accepted.\n")
-              write_raw(opts, body)
-              @exit_auth
-
-            {:ok, _session, _status, body, _} ->
-              write_raw(opts, body)
-              @exit_response
-
-            {:network, reason} ->
-              write(opts, :stderr, "request failed: #{inspect(reason)}\n")
-              @exit_network
-
-            {:error, code, message} ->
-              write(opts, :stderr, message)
-              code
-          end
-        end)
+        :error ->
+          write(opts, :stderr, "Could not open a browser. Use the page and code above.\n")
       end
     end
+  end
+
+  defp poll_device(device_code, opts, session, interval, expires_in, waited, polls) do
+    cond do
+      waited >= expires_in or polls > expires_in ->
+        {:expired, nil}
+
+      true ->
+        case Client.post(
+               session,
+               "/api/v1/auth/token",
+               %{
+                 "grant_type" => @device_grant,
+                 "device_code" => device_code,
+                 "client_id" => @client_id
+               }
+             ) do
+          {:ok, _session, 200, body, _headers} ->
+            {:approved, body}
+
+          {:ok, _session, _status, body, _} ->
+            case device_error_code(body) do
+              "authorization_pending" ->
+                wait(opts, interval)
+
+                poll_device(
+                  device_code,
+                  opts,
+                  session,
+                  interval,
+                  expires_in,
+                  waited + max(interval, 1),
+                  polls + 1
+                )
+
+              "slow_down" ->
+                interval = interval + 5
+                wait(opts, interval)
+
+                poll_device(
+                  device_code,
+                  opts,
+                  session,
+                  interval,
+                  expires_in,
+                  waited + max(interval, 1),
+                  polls + 1
+                )
+
+              "access_denied" ->
+                {:denied, body}
+
+              "expired_token" ->
+                {:expired, body}
+
+              "invalid_grant" ->
+                {:used, body}
+
+              _other ->
+                {:error, body}
+            end
+
+          {:network, reason} ->
+            {:network, reason}
+
+          {:error, code, message} ->
+            {:client, code, message}
+        end
+    end
+  end
+
+  defp finish_device({:approved, body}, opts, globals) do
+    opts
+    |> store_login(nil, body)
+    |> refuse_token_save(opts, globals)
+  end
+
+  defp finish_device({:denied, _body}, opts, _globals) do
+    write(opts, :stderr, "The sign-in was denied.\n")
+    @exit_response
+  end
+
+  defp finish_device({:expired, _body}, opts, _globals) do
+    write(opts, :stderr, "The sign-in expired. Run jurisdictional login again.\n")
+    @exit_response
+  end
+
+  defp finish_device({:used, _body}, opts, _globals) do
+    write(opts, :stderr, "That sign-in was already used.\n")
+    @exit_response
+  end
+
+  defp finish_device({:error, body}, opts, _globals) do
+    write(opts, :stderr, device_error_text(body))
+    @exit_response
+  end
+
+  defp finish_device({:network, reason}, opts, _globals) do
+    write(opts, :stderr, "request failed: #{inspect(reason)}\n")
+    @exit_network
+  end
+
+  defp finish_device({:client, code, message}, opts, _globals) do
+    write(opts, :stderr, message)
+    code
+  end
+
+  defp do_paste_login(opts, globals, _parsed) do
+    case read_secret(opts, "paste the token: ") do
+      :interrupted ->
+        write(opts, :stderr, "cancelled\n")
+        @exit_usage
+
+      token when token in [nil, ""] ->
+        write(opts, :stderr, "token is required\n")
+        @exit_usage
+
+      token ->
+        redeem_pasted_token(opts, globals, token)
+    end
+  end
+
+  defp redeem_pasted_token(opts, globals, token) do
+    write(opts, :stderr, "signing in\n")
+
+    with_host(opts, globals, fn session ->
+      case Client.post(session, "/api/v1/auth/refresh", %{
+             "refresh_token" => JurisdictionalCli.Secret.Redacted.wrap(token)
+           }) do
+        {:ok, _session, 200, body, _headers} ->
+          opts
+          |> store_login(nil, body)
+          |> refuse_token_save(opts, globals)
+
+        {:ok, _session, 401, body, _} ->
+          write(opts, :stderr, "That token was not accepted.\n")
+          write_raw(opts, body)
+          @exit_auth
+
+        {:ok, _session, _status, body, _} ->
+          write(opts, :stderr, device_error_text(body))
+          @exit_response
+
+        {:network, reason} ->
+          write(opts, :stderr, "request failed: #{inspect(reason)}\n")
+          @exit_network
+
+        {:error, code, message} ->
+          write(opts, :stderr, message)
+          code
+      end
+    end)
   end
 
   defp store_login(opts, email, body) do
@@ -336,7 +604,7 @@ defmodule JurisdictionalCli do
 
         case Client.write_credentials(opts, creds) do
           :ok ->
-            write(opts, :stdout, "stored credentials for #{email}\n")
+            write(opts, :stdout, credential_notice(email))
             @exit_ok
 
           {:error, reason} ->
@@ -347,6 +615,104 @@ defmodule JurisdictionalCli do
       _ ->
         write(opts, :stderr, "login response had no access_token\n")
         @exit_response
+    end
+  end
+
+  defp credential_notice(email) when is_binary(email) and email != "" do
+    "stored credentials for #{email}\n"
+  end
+
+  defp credential_notice(_email), do: "stored credentials\n"
+
+  defp device_name(opts) do
+    case opts[:device_name] do
+      name when is_binary(name) and name != "" -> String.slice(name, 0, 64)
+      _ -> hostname()
+    end
+  end
+
+  defp hostname do
+    case :inet.gethostname() do
+      {:ok, name} ->
+        name = name |> List.to_string() |> String.trim() |> String.slice(0, 64)
+
+        if name != "" and String.match?(name, ~r/\A[[:print:]]+\z/u) do
+          name
+        else
+          "Jurisdictional CLI"
+        end
+
+      _ ->
+        "Jurisdictional CLI"
+    end
+  end
+
+  defp interval_of(data), do: positive_int(data["interval"]) || 5
+
+  defp expires_of(data), do: positive_int(data["expires_in"]) || 600
+
+  defp positive_int(n) when is_integer(n) and n > 0, do: n
+  defp positive_int(n) when is_float(n) and n > 0, do: trunc(n)
+  defp positive_int(_n), do: nil
+
+  defp wait(opts, seconds) do
+    case opts[:sleep] do
+      fun when is_function(fun, 1) -> fun.(seconds)
+      _ -> Process.sleep(seconds * 1_000)
+    end
+  end
+
+  defp open_browser(opts, url) when is_binary(url) and url != "" do
+    cond do
+      is_function(opts[:open], 1) ->
+        case opts[:open].(url) do
+          :error -> :error
+          _ -> :ok
+        end
+
+      opts[:capture?] ->
+        :ok
+
+      true ->
+        open_browser_os(url)
+    end
+  end
+
+  defp open_browser(_opts, _url), do: :error
+
+  defp open_browser_os(url) do
+    {cmd, args} =
+      case :os.type() do
+        {:unix, :darwin} -> {"open", [url]}
+        {:unix, _} -> {"xdg-open", [url]}
+        {:win32, _} -> {"cmd", ["/c", "start", "", url]}
+      end
+
+    case System.cmd(cmd, args, stderr_to_stdout: true) do
+      {_, 0} -> :ok
+      _ -> :error
+    end
+  rescue
+    _error -> :error
+  end
+
+  defp device_error_code(body) do
+    case Jason.decode(body) do
+      {:ok, %{"error" => code}} when is_binary(code) -> code
+      _ -> nil
+    end
+  end
+
+  defp device_error_text(body) do
+    case Jason.decode(body) do
+      {:ok, %{"error_description" => text}} when is_binary(text) and text != "" ->
+        text <> "\n"
+
+      {:ok, %{"error" => %{"message" => text}}} when is_binary(text) and text != "" ->
+        text <> "\n"
+
+      _ ->
+        "sign-in failed\n"
     end
   end
 
@@ -1346,6 +1712,17 @@ defmodule JurisdictionalCli do
             line -> String.trim(to_string(line))
           end
         end
+    end
+  end
+
+  # Like read_line, but a terminal does not show what is typed.
+  # Lines seeded by a test, and piped stdin, read as they do for read_line.
+  defp read_secret(opts, prompt) do
+    seed_lines(opts)
+
+    case Process.get(:jurisdictional_cli_lines, []) do
+      [_ | _] -> read_line(opts, prompt)
+      [] -> if opts[:capture?], do: nil, else: JurisdictionalCli.Secret.read(prompt)
     end
   end
 

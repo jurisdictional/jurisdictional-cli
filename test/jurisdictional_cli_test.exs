@@ -206,42 +206,101 @@ defmodule JurisdictionalCliTest do
     assert err == ""
   end
 
-  test "a rejected password says so instead of going quiet" do
-    home = fresh_home()
+  test "login has no password sign-in" do
+    {code, _out, err} = capture(["login", "--password"])
+    assert code == 2
+    assert err =~ "unknown flag --password"
 
-    {code, out, err} =
-      invoke(
-        ["login", "--email", "ada@example.com"],
-        fn bypass ->
-          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
-            Plug.Conn.resp(conn, 401, ~s({"error":"invalid"}\n))
-          end)
-        end,
-        home: home,
-        lines: ["secret"]
-      )
+    {code, _out, err} = capture(["login", "--email", "ada@example.com"])
+    assert code == 2
+    assert err =~ "unknown flag --email"
 
-    assert code == 4
-    assert err =~ "signing in"
-    assert err =~ "was not accepted"
-    assert out =~ "invalid"
+    {code, out, _err} = capture(["help"])
+    assert code == 0
+    refute out =~ "password"
   end
 
-  test "login stores credentials and leaves the long-lived token file" do
+  test "--paste refuses a token on the command line, without repeating it" do
+    {code, out, err} = capture(["login", "--paste", "jur_ref-on-argv"])
+
+    assert code == 2
+    assert err =~ "shell history"
+    refute err =~ "jur_ref-on-argv"
+    refute out =~ "jur_ref-on-argv"
+  end
+
+  test "a pasted token never reaches output, credentials, or a saved file" do
+    token = "jur_ref-Zq8!never-shown"
+    home = fresh_home()
+    dir = Path.join(home, "saved")
+    parent = self()
+
+    for status <- [200, 401, 500] do
+      {_code, out, err} =
+        invoke(
+          ["login", "--paste", "--save", dir],
+          fn bypass ->
+            Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
+              {:ok, raw, conn} = Plug.Conn.read_body(conn)
+              send(parent, {:sent, Jason.decode!(raw)["refresh_token"]})
+
+              body =
+                if status == 200,
+                  do: ~s({"access_token":"jur_new","refresh_token":"jur_ref","expires_in":3600}),
+                  else: ~s({"error":"nope"})
+
+              Plug.Conn.resp(conn, status, body)
+            end)
+          end,
+          home: home,
+          lines: [token],
+          tty?: true
+        )
+
+      # The server still gets the real token.
+      assert_received {:sent, ^token}
+      assert err =~ "paste the token: "
+      refute out =~ token
+      refute err =~ token
+    end
+
+    {_code, out, err} =
+      capture(["--host", "http://127.0.0.1:1", "login", "--paste"],
+        home: home,
+        lines: [token]
+      )
+
+    assert err =~ "request failed"
+    refute out =~ token
+    refute err =~ token
+
+    for file <- Path.wildcard(Path.join(home, "**/*"), match_dot: true), File.regular?(file) do
+      refute File.read!(file) =~ token, "token found in #{file}"
+    end
+  end
+
+  test "an inspected secret shows as redacted" do
+    secret = JurisdictionalCli.Secret.Redacted.wrap("jur_ref-Zq8!never-shown")
+
+    refute inspect(secret) =~ "never-shown"
+    refute inspect(%{"refresh_token" => secret}) =~ "never-shown"
+    refute to_string(secret) =~ "never-shown"
+
+    assert Jason.encode!(%{"refresh_token" => secret}) ==
+             ~s({"refresh_token":"jur_ref-Zq8!never-shown"})
+  end
+
+  test "login --paste stores credentials at mode 600 and leaves the long-lived token file" do
     home = fresh_home()
     token = Path.join(home, ".jurisdictional/token")
     File.mkdir_p!(Path.dirname(token))
     File.write!(token, "long-lived\n")
-    parent = self()
 
-    {code, _out, err} =
+    {code, out, err} =
       invoke(
-        ["login", "--email", "ada@example.com"],
+        ["login", "--paste"],
         fn bypass ->
-          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
-            {:ok, raw, conn} = Plug.Conn.read_body(conn)
-            send(parent, {:login, req_headers(conn)["authorization"], Jason.decode!(raw)})
-
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
             Plug.Conn.resp(
               conn,
               200,
@@ -250,11 +309,11 @@ defmodule JurisdictionalCliTest do
           end)
         end,
         home: home,
-        lines: ["secret"]
+        lines: ["jur_ref_shown"]
       )
 
     assert code == 0, err
-    assert_received {:login, nil, %{"password" => "secret", "device_id" => "jurisdictional-cli"}}
+    assert out =~ "stored credentials for ada@example.com"
     assert File.read!(token) == "long-lived\n"
 
     cred_path = Path.join(home, ".jurisdictional/credentials.json")
@@ -264,7 +323,7 @@ defmodule JurisdictionalCliTest do
     saved = File.read!(cred_path)
     assert saved =~ "jur_new"
     assert saved =~ "2026-11-09T13:00:00Z"
-    refute saved =~ "secret"
+    refute saved =~ "jur_ref_shown"
   end
 
   test "login with expires_in 0 does not store an expiry" do
@@ -272,9 +331,9 @@ defmodule JurisdictionalCliTest do
 
     {code, _out, err} =
       invoke(
-        ["login", "--email", "ada@example.com"],
+        ["login", "--paste"],
         fn bypass ->
-          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
             Plug.Conn.resp(
               conn,
               200,
@@ -283,12 +342,379 @@ defmodule JurisdictionalCliTest do
           end)
         end,
         home: home,
-        lines: ["secret"]
+        lines: ["jur_ref_shown"]
       )
 
     assert code == 0, err
     saved = File.read!(Path.join(home, ".jurisdictional/credentials.json"))
     refute saved =~ "expires_at"
+  end
+
+  test "login opens the browser, prints the code, and stores tokens after approval" do
+    home = fresh_home()
+    token_file = Path.join(home, ".jurisdictional/token")
+    File.mkdir_p!(Path.dirname(token_file))
+    File.write!(token_file, "long-lived\n")
+    parent = self()
+    polls = :counters.new(1, [])
+
+    {code, out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            {:ok, raw, conn} = Plug.Conn.read_body(conn)
+            send(parent, {:device, req_headers(conn)["authorization"], Jason.decode!(raw)})
+
+            Plug.Conn.resp(
+              conn,
+              200,
+              Jason.encode!(%{
+                "device_code" => "device-code-secret",
+                "user_code" => "BCDF-GHJK",
+                "verification_uri" => "https://jurisdictional.org/device",
+                "verification_uri_complete" =>
+                  "https://jurisdictional.org/device?user_code=BCDF-GHJK",
+                "expires_in" => 600,
+                "interval" => 5
+              })
+            )
+          end)
+
+          Bypass.expect(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            {:ok, raw, conn} = Plug.Conn.read_body(conn)
+            send(parent, {:poll, req_headers(conn)["authorization"], Jason.decode!(raw)})
+            n = :counters.get(polls, 1)
+            :counters.add(polls, 1, 1)
+
+            if n == 0 do
+              Plug.Conn.resp(
+                conn,
+                400,
+                ~s({"error":"authorization_pending","error_description":"The request has not been approved yet."})
+              )
+            else
+              Plug.Conn.resp(conn, 200, device_token_json())
+            end
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn seconds -> send(parent, {:slept, seconds}) end,
+        open: fn url -> send(parent, {:opened, url}) end
+      )
+
+    assert code == 0, err
+    assert err =~ "Sign in at https://jurisdictional.org/device\n"
+    assert err =~ "Code: BCDF-GHJK"
+    assert err =~ "Device: test-host"
+    assert err =~ "Waiting for approval."
+    assert out =~ "stored credentials for ada@example.com"
+    refute out =~ "device-code-secret"
+    refute err =~ "device-code-secret"
+    refute out =~ "jur_access"
+    refute err =~ "jur_access"
+    refute out =~ "jur_refresh"
+    refute err =~ "jur_refresh"
+
+    assert_received {:opened, "https://jurisdictional.org/device?user_code=BCDF-GHJK"}
+    assert_received {:slept, 5}
+
+    assert_received {
+      :device,
+      nil,
+      %{"client_id" => "jurisdictional-cli", "device_name" => "test-host"}
+    }
+
+    assert_received {
+      :poll,
+      nil,
+      %{
+        "grant_type" => "urn:ietf:params:oauth:grant-type:device_code",
+        "device_code" => "device-code-secret",
+        "client_id" => "jurisdictional-cli"
+      }
+    }
+
+    assert File.read!(token_file) == "long-lived\n"
+    cred_path = Path.join(home, ".jurisdictional/credentials.json")
+    stat = File.stat!(cred_path)
+    assert Bitwise.band(stat.mode, 0o777) == 0o600
+    saved = File.read!(cred_path)
+    assert saved =~ "jur_access"
+    assert saved =~ "jur_refresh"
+    assert saved =~ "ada@example.com"
+    assert saved =~ "2026-11-09T13:00:00Z"
+  end
+
+  test "login says when the browser cannot be opened and still waits" do
+    home = fresh_home()
+
+    {code, out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 200, device_start_json())
+          end)
+
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            Plug.Conn.resp(conn, 200, device_token_json())
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn _seconds -> :ok end,
+        open: fn _url -> :error end
+      )
+
+    assert code == 0, err
+    assert err =~ "Could not open a browser."
+    assert out =~ "stored credentials for ada@example.com"
+  end
+
+  test "login --no-browser prints the code and does not open a page" do
+    home = fresh_home()
+    parent = self()
+
+    {code, _out, err} =
+      invoke(
+        ["login", "--no-browser"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 200, device_start_json())
+          end)
+
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            Plug.Conn.resp(conn, 200, device_token_json())
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn _seconds -> :ok end,
+        open: fn url -> send(parent, {:opened, url}) end
+      )
+
+    assert code == 0, err
+    assert err =~ "Code: BCDF-GHJK"
+    refute_received {:opened, _}
+  end
+
+  test "a denied device sign-in stores nothing" do
+    home = fresh_home()
+
+    {code, out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 200, device_start_json())
+          end)
+
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            Plug.Conn.resp(
+              conn,
+              400,
+              ~s({"error":"access_denied","error_description":"The request was denied."})
+            )
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn _seconds -> :ok end,
+        open: fn _url -> :ok end
+      )
+
+    assert code == 1, err
+    assert err =~ "The sign-in was denied."
+    assert out == ""
+    refute File.exists?(Path.join(home, ".jurisdictional/credentials.json"))
+  end
+
+  test "an already used device sign-in stores nothing" do
+    home = fresh_home()
+
+    {code, _out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 200, device_start_json())
+          end)
+
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            Plug.Conn.resp(
+              conn,
+              400,
+              ~s({"error":"invalid_grant","error_description":"Unknown or already used device code."})
+            )
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn _seconds -> :ok end,
+        open: fn _url -> :ok end
+      )
+
+    assert code == 1, err
+    assert err =~ "already used"
+    refute File.exists?(Path.join(home, ".jurisdictional/credentials.json"))
+    refute err =~ "device-code-secret"
+  end
+
+  test "polling too fast waits longer" do
+    home = fresh_home()
+    parent = self()
+    polls = :counters.new(1, [])
+
+    {code, _out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 200, device_start_json())
+          end)
+
+          Bypass.expect(bypass, "POST", "/api/v1/auth/token", fn conn ->
+            n = :counters.get(polls, 1)
+            :counters.add(polls, 1, 1)
+
+            if n == 0 do
+              Plug.Conn.resp(
+                conn,
+                400,
+                ~s({"error":"slow_down","error_description":"Polling too fast; wait 5 seconds longer between polls."})
+              )
+            else
+              Plug.Conn.resp(conn, 200, device_token_json())
+            end
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        sleep: fn seconds -> send(parent, {:slept, seconds}) end,
+        open: fn _url -> :ok end
+      )
+
+    assert code == 0, err
+    assert_received {:slept, 10}
+  end
+
+  test "a server without browser sign-in points at --token" do
+    home = fresh_home()
+
+    {code, _out, err} =
+      invoke(
+        ["login"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/device", fn conn ->
+            Plug.Conn.resp(conn, 404, "not found")
+          end)
+        end,
+        home: home,
+        device_name: "test-host",
+        open: fn _url -> send(self(), :opened) end
+      )
+
+    assert code == 1, err
+    assert err =~ "--token"
+    refute_received :opened
+  end
+
+  test "login --token is refused because that flag is a one-shot bearer" do
+    {code, out, err} = capture(["login", "--token", "jur_secret"])
+
+    assert code == 2
+    assert err =~ "login --paste"
+    assert out == ""
+    refute err =~ "jur_secret"
+  end
+
+  test "login --paste redeems the refresh token shown on the approval page" do
+    home = fresh_home()
+    token_file = Path.join(home, ".jurisdictional/token")
+    File.mkdir_p!(Path.dirname(token_file))
+    File.write!(token_file, "long-lived\n")
+    parent = self()
+
+    {code, out, err} =
+      invoke(
+        ["login", "--paste"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
+            {:ok, raw, conn} = Plug.Conn.read_body(conn)
+            send(parent, {:refresh, req_headers(conn)["authorization"], Jason.decode!(raw)})
+
+            Plug.Conn.resp(
+              conn,
+              200,
+              ~s({"access_token":"jur_access","refresh_token":"jur_refresh_new","expires_in":3600})
+            )
+          end)
+        end,
+        home: home,
+        tty?: true,
+        lines: ["jur_ref_shown"]
+      )
+
+    assert code == 0, err
+    assert err =~ "paste the token: "
+    assert err =~ "signing in"
+    assert out =~ "stored credentials"
+    refute out =~ "for "
+    refute out =~ "jur_ref_shown"
+    refute err =~ "jur_ref_shown"
+    refute out =~ "jur_access"
+    assert_received {:refresh, nil, %{"refresh_token" => "jur_ref_shown"}}
+    assert File.read!(token_file) == "long-lived\n"
+    saved = File.read!(Path.join(home, ".jurisdictional/credentials.json"))
+    assert saved =~ "jur_access"
+    assert saved =~ "jur_refresh_new"
+    refute saved =~ "jur_ref_shown"
+  end
+
+  test "a rejected pasted token is not stored" do
+    home = fresh_home()
+
+    {code, out, err} =
+      invoke(
+        ["login", "--paste"],
+        fn bypass ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
+            Plug.Conn.resp(conn, 401, ~s({"error":{"message":"Invalid refresh token"}}))
+          end)
+        end,
+        home: home,
+        lines: ["jur_ref_shown"]
+      )
+
+    assert code == 4
+    assert err =~ "was not accepted"
+    assert out =~ "Invalid refresh token"
+    refute err =~ "jur_ref_shown"
+    refute out =~ "jur_ref_shown"
+    refute File.exists?(Path.join(home, ".jurisdictional/credentials.json"))
+  end
+
+  defp device_start_json do
+    Jason.encode!(%{
+      "device_code" => "device-code-secret",
+      "user_code" => "BCDF-GHJK",
+      "verification_uri" => "https://jurisdictional.org/device",
+      "verification_uri_complete" => "https://jurisdictional.org/device?user_code=BCDF-GHJK",
+      "expires_in" => 600,
+      "interval" => 5
+    })
+  end
+
+  defp device_token_json do
+    Jason.encode!(%{
+      "access_token" => "jur_access",
+      "refresh_token" => "jur_refresh",
+      "expires_in" => 3600,
+      "token_type" => "Bearer",
+      "user" => %{"email" => "ada@example.com"}
+    })
   end
 
   test "an unexpired credential is sent and not refreshed" do
@@ -529,7 +955,10 @@ defmodule JurisdictionalCliTest do
       env: Keyword.get(opts, :env, %{}),
       lines: Keyword.get(opts, :lines, []),
       tty?: Keyword.get(opts, :tty?, false),
-      capture?: true
+      capture?: true,
+      sleep: Keyword.get(opts, :sleep),
+      open: Keyword.get(opts, :open),
+      device_name: Keyword.get(opts, :device_name)
     )
   end
 

@@ -52,9 +52,9 @@ defmodule JurisdictionalCli.SaveTest do
 
     {code, out, err} =
       invoke(
-        ["login", "--email", "ada@example.com", "--save", dir],
+        ["login", "--paste", "--save", dir],
         fn bypass ->
-          Bypass.expect_once(bypass, "POST", "/api/v1/auth/token", fn conn ->
+          Bypass.expect_once(bypass, "POST", "/api/v1/auth/refresh", fn conn ->
             Plug.Conn.resp(
               conn,
               200,
@@ -63,7 +63,7 @@ defmodule JurisdictionalCli.SaveTest do
           end)
         end,
         home: home,
-        lines: ["secret"]
+        lines: ["jur_ref_shown"]
       )
 
     assert code == 1

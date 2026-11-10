@@ -10,7 +10,9 @@ defmodule JurisdictionalCli.MixProject do
       deps: deps(),
       escript: [
         main_module: JurisdictionalCli,
-        name: "jurisdictional"
+        name: "jurisdictional",
+        # A crash dump copies process memory, which can hold a password, into the cwd.
+        emu_args: "-env ERL_CRASH_DUMP_BYTES 0"
       ],
       aliases: [
         precommit: ["format", "test"]
