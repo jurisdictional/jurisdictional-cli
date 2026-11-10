@@ -107,11 +107,14 @@ Lower them as the command dispatch is split up.
 
 The code is licensed under the [Apache License 2.0](LICENSE).
 
-The data is a different matter.
-`responses/` and the release's `geo-layers.json` are copies of what https://jurisdictional.org served.
-Jurisdictional publishes its own contributions under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
-The records also gather facts from public sources, and some of those sources carry their own terms.
-Those terms travel with the data, not with this repository.
-When you reuse a record, check its source and credit it.
+The data is licensed separately, under the [Open Database License 1.0](responses/LICENSE) (ODbL).
+That covers `responses/` and the release's `geo-layers.json`, which are copies of what https://jurisdictional.org served.
+Individual records are under the [Database Contents License 1.0](https://opendatacommons.org/licenses/dbcl/1-0/).
+You can use the data for any purpose, commercial included.
+Credit Jurisdictional, and share a database you build from it under the ODbL.
+A commercial license from Jurisdictional waives the share-alike and attribution terms for closed products.
+
+Some records gather facts from public sources that carry their own terms.
+Those terms travel with the record, so check its source before you reuse it.
 The Apache license covers the code only.
 
