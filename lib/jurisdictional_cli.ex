@@ -96,6 +96,8 @@ defmodule JurisdictionalCli do
     reset_capture()
 
     with {:ok, globals, rest} <- split_globals(args) do
+      opts = Keyword.put(opts, :command, command_name(rest))
+
       case rest do
         [] ->
           write(opts, :stdout, @usage)
@@ -141,6 +143,23 @@ defmodule JurisdictionalCli do
         @exit_usage
     end
   end
+
+  @commands ~w(juricode jurisdictions agencies services bodies meetings people nearby geo
+               activity login logout me devices sync contributions gather tax sourcing images
+               tools tool message api well-known health)
+  @subcommands ~w(list get autocomplete at-point scene positions layers jurisdiction person
+                  quick submit import next stats results generate add remove officials
+                  contributions feed notifications)
+
+  # Only names from the lists above, so an argument such as an address never leaves as a command.
+  defp command_name([cmd | rest]) when cmd in @commands do
+    case rest do
+      [sub | _] when sub in @subcommands and cmd not in ~w(tool api juricode) -> cmd <> " " <> sub
+      _ -> cmd
+    end
+  end
+
+  defp command_name(_rest), do: nil
 
   defp normalize_opts(opts) do
     home = opts[:home] || System.get_env("HOME") || System.user_home!()

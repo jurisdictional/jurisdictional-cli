@@ -30,7 +30,6 @@ Each release also attaches it as `juricode-workflow.yml`.
 ## Release
 
 The Release workflow runs the tests, builds a bundled release for each platform, and publishes them to GitHub.
-It also attaches `geo-layers.json`, the public boundary layers, for other apps to fetch.
 Then it installs from the published release on Ubuntu, macOS, and a clean Debian container with no Erlang.
 Bump `version` in `mix.exs`, push, then run it from the Actions tab or from here:
 
@@ -108,7 +107,7 @@ Lower them as the command dispatch is split up.
 The code is licensed under the [Apache License 2.0](LICENSE).
 
 The data is licensed separately, under the [Open Database License 1.0](responses/LICENSE) (ODbL).
-That covers `responses/` and the release's `geo-layers.json`, which are copies of what https://jurisdictional.org served.
+That covers `responses/`, which are copies of what https://jurisdictional.org served.
 Individual records are under the [Database Contents License 1.0](https://opendatacommons.org/licenses/dbcl/1-0/).
 You can use the data for any purpose, commercial included.
 Credit Jurisdictional, and share a database you build from it under the ODbL.

@@ -962,6 +962,42 @@ defmodule JurisdictionalCliTest do
     assert out =~ "0681554"
   end
 
+  test "requests name the client and the command, never its arguments" do
+    parent = self()
+
+    for {args, env, expected} <- [
+          {["juricode", "300 Hemlock St, Vacaville"], %{}, ["juricode"]},
+          {["agencies", "list", "--jurisdiction", "70118"], %{}, ["agencies list"]},
+          {["agencies", "get", "13012"], %{}, ["agencies get"]},
+          {["juricode", "300 Hemlock St"], %{"DO_NOT_TRACK" => "1"}, []}
+        ] do
+      {code, _out, err} =
+        invoke(
+          args,
+          fn bypass ->
+            Bypass.expect_once(bypass, fn conn ->
+              send(
+                parent,
+                {:headers, Plug.Conn.get_req_header(conn, "user-agent"),
+                 Plug.Conn.get_req_header(conn, "x-jurisdictional-command")}
+              )
+
+              Plug.Conn.resp(conn, 200, ~s({"data":[]}))
+            end)
+          end,
+          env: env
+        )
+
+      assert code == 0, err
+      assert_received {:headers, [user_agent], ^expected}
+
+      assert user_agent =~
+               ~r{\Ajurisdictional-cli/\d+\.\d+\.\d+ \([a-z]+-[a-z0-9_]+; (release|source)\)\z}
+
+      refute user_agent =~ "Hemlock"
+    end
+  end
+
   test "--help, -h and --version answer without a command" do
     for flag <- ["--help", "-h", "help"] do
       {code, out, _err} = capture([flag])

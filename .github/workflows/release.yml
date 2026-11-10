@@ -13,7 +13,6 @@
 #   jurisdictional-<target>.tar.gz  mix release with its own Erlang runtime
 #   install.sh                      picks the right file, checks SHA256SUMS, confirms it runs
 #   juricode-workflow.yml           example GitHub Actions workflow
-#   geo-layers.json                 public boundary layers, for other apps to fetch
 #   SHA256SUMS                      checksums for every file above
 name: Release
 
@@ -155,17 +154,6 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-
-      - name: Fetch the public geo layers
-        run: |
-          mkdir -p cli
-          tar -xzf dist/jurisdictional-linux-x86_64.tar.gz -C cli
-          cli/jurisdictional/bin/jurisdictional --json geo layers > dist/geo-layers.json
-          jq -e 'type == "object" or type == "array"' dist/geo-layers.json > /dev/null \
-            || { echo "::error::geo layers did not return JSON"; exit 1; }
-          size=$(wc -c < dist/geo-layers.json)
-          echo "geo-layers.json: $size bytes"
-          [ "$size" -gt 100000 ] || { echo "::error::geo layers looks too small ($size bytes)"; exit 1; }
 
       - name: Add the installer, the example, and checksums
         run: |

@@ -1,7 +1,7 @@
 defmodule JurisdictionalCli.Client do
   @moduledoc false
 
-  @user_agent "jurisdictional-cli/#{Mix.Project.config()[:version]}"
+  @version Mix.Project.config()[:version]
 
   def open_session(opts, globals), do: open(opts, globals, true)
   def open_host(opts, globals), do: open(opts, globals, false)
@@ -298,7 +298,11 @@ defmodule JurisdictionalCli.Client do
 
   defp round_trip(session, method, path, query, body) do
     headers =
-      [{"user-agent", @user_agent}, {"accept", accept_header(session.globals.profile)}]
+      [
+        {"user-agent", user_agent()},
+        {"accept", accept_header(session.globals.profile)}
+        | command_header(session.opts)
+      ]
 
     headers =
       if is_binary(body) do
@@ -376,6 +380,49 @@ defmodule JurisdictionalCli.Client do
 
   defp exception_reason(%{reason: reason}), do: reason
   defp exception_reason(other), do: other
+
+  @doc """
+  `jurisdictional-cli/VERSION (PLATFORM; BUILD)`, e.g. `jurisdictional-cli/0.1.1 (macos-arm64; release)`.
+  It names the client, never the person.
+  """
+  def user_agent, do: "jurisdictional-cli/#{@version} (#{platform()}; #{build()})"
+
+  defp platform do
+    os =
+      case :os.type() do
+        {:unix, :darwin} -> "macos"
+        {:unix, name} -> Atom.to_string(name)
+        {:win32, _} -> "windows"
+      end
+
+    arch =
+      :erlang.system_info(:system_architecture)
+      |> List.to_string()
+      |> String.split("-")
+      |> hd()
+      |> case do
+        "aarch64" -> "arm64"
+        "amd64" -> "x86_64"
+        other -> other
+      end
+
+    os <> "-" <> arch
+  end
+
+  # The bundled release sets RELEASE_NAME; anything else is a source build.
+  defp build, do: if(System.get_env("RELEASE_NAME"), do: "release", else: "source")
+
+  # The command name (never its arguments), so usage can be counted per command.
+  # DO_NOT_TRACK=1 leaves it out (https://consoledonottrack.com).
+  defp command_header(opts) do
+    command = opts[:command]
+
+    if is_binary(command) and not do_not_track?(opts),
+      do: [{"x-jurisdictional-command", command}],
+      else: []
+  end
+
+  defp do_not_track?(opts), do: env(opts, "DO_NOT_TRACK") in ["1", "true", "yes"]
 
   defp env(opts, key) do
     case Keyword.fetch(opts, :env) do
