@@ -95,8 +95,23 @@ mix deps.get
 mix precommit
 ```
 
+Sign off each commit (`git commit -s`) to certify the [Developer Certificate of Origin](https://developercertificate.org/).
+Contributions come in under the same license as the code.
+
 `mix precommit` formats the code, then runs Credo, Dialyzer, and the tests, including the property tests in `test/property_test.exs`.
 CI runs the same checks on every push and pull request.
 The Credo limits on nesting and complexity in `.credo.exs` match today's worst function.
 Lower them as the command dispatch is split up.
+
+## License
+
+The code is licensed under the [Apache License 2.0](LICENSE).
+
+The data is a different matter.
+`responses/` and the release's `geo-layers.json` are copies of what https://jurisdictional.org served.
+Jurisdictional publishes its own contributions under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+The records also gather facts from public sources, and some of those sources carry their own terms.
+Those terms travel with the data, not with this repository.
+When you reuse a record, check its source and credit it.
+The Apache license covers the code only.
 
