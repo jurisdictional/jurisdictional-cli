@@ -1,7 +1,7 @@
 defmodule JurisdictionalCli.Client do
   @moduledoc false
 
-  @user_agent "jurisdictional-cli/0.1.0"
+  @user_agent "jurisdictional-cli/#{Mix.Project.config()[:version]}"
 
   def open_session(opts, globals), do: open(opts, globals, true)
   def open_host(opts, globals), do: open(opts, globals, false)
