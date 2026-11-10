@@ -48,7 +48,7 @@ jobs:
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Read the version from mix.exs
         id: version
@@ -79,7 +79,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: erlef/setup-beam@v1
         with:
@@ -101,7 +101,7 @@ jobs:
           ./jurisdictional help | grep -q "client for the Jurisdictional HTTP API" \
             || { echo "::error::escript did not print its usage"; exit 1; }
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: escript
           path: jurisdictional
@@ -123,7 +123,7 @@ jobs:
             os: macos-15
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: erlef/setup-beam@v1
         with:
@@ -176,7 +176,7 @@ jobs:
             "$0" --json juricode "Vacaville, CA" | grep -q "\"jurisdictions\""
           ' "$bin"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: bundle-${{ matrix.target }}
           path: jurisdictional-${{ matrix.target }}.tar.gz
@@ -186,9 +186,9 @@ jobs:
     needs: [test, escript, bundle]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -234,26 +234,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: ubuntu
-            os: ubuntu-latest
-          - name: ubuntu-arm
-            os: ubuntu-24.04-arm
-          - name: macos
-            os: macos-latest
-          # A clean distro with no Erlang, the case issue #1 is about.
-          - name: debian
-            os: ubuntu-latest
-            container: debian:12
-            strict: true
-    name: verify-install (${{ matrix.name }})
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest]
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.container }}
     steps:
-      - name: Install curl in the container
-        if: matrix.container != ''
-        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates > /dev/null
-
       - name: Install from the published release
         run: |
           curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh" \
@@ -270,10 +253,44 @@ jobs:
             *) echo "::error::expected a link into the bundled release, got '$target'"; exit 1 ;;
           esac
 
+      - name: Run the example workflow's lookup
+        run: |
+          # shellcheck disable=SC2016 # the inner shell expands these
+          env -i HOME="$HOME" PATH=/usr/bin:/bin sh -c '
+            status=0
+            "$HOME/.local/bin/jurisdictional" --json juricode "Vacaville, CA" > juricode.json || status=$?
+            if [ "$status" -ne 0 ]; then echo "juricode exited with $status"; cat juricode.json; exit "$status"; fi
+            grep -q "\"jurisdictions\"" juricode.json
+          '
+
+  # A clean distro with no Erlang at all: the acceptance check for issue #1.
+  verify-install-debian:
+    needs: [test, publish]
+    runs-on: ubuntu-latest
+    container: debian:12
+    steps:
+      - name: Install curl
+        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates > /dev/null
+
       - name: Confirm this machine has no Erlang
-        if: matrix.strict
         run: |
           if command -v erl || command -v elixir; then echo "::error::Erlang is installed; this job should prove the opposite"; exit 1; fi
+
+      - name: Install from the published release
+        run: |
+          curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh" \
+            | JURISDICTIONAL_VERSION="$TAG" sh
+        env:
+          TAG: ${{ needs.test.outputs.tag }}
+
+      - name: Confirm the bundled build was installed
+        run: |
+          target=$(readlink "$HOME/.local/bin/jurisdictional" || true)
+          echo "jurisdictional -> $target"
+          case "$target" in
+            */.local/share/jurisdictional/bin/jurisdictional) ;;
+            *) echo "::error::expected a link into the bundled release, got '$target'"; exit 1 ;;
+          esac
 
       - name: Run the example workflow's lookup
         run: |

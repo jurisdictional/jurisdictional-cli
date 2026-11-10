@@ -21,7 +21,7 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: erlef/setup-beam@v1
         id: beam
@@ -29,7 +29,7 @@ jobs:
           otp-version: "28"
           elixir-version: "1.19"
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: |
             deps
@@ -37,7 +37,7 @@ jobs:
           key: mix-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
 
       # Building the PLT takes minutes; it only changes with OTP, Elixir or deps.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: priv/plts
           key: plt-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}

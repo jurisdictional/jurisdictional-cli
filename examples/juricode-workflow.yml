@@ -34,7 +34,7 @@ jobs:
           fi
           echo "Found $(grep -o '"ocd_id"' juricode.json | wc -l) jurisdictions for $ADDRESS"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: juricode
           path: juricode.json
