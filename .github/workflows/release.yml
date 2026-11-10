@@ -65,14 +65,31 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # Tests run on the current OTP: test-only deps (cowlib, via bypass) need OTP 27+.
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+
+      - run: mix deps.get
+      - run: mix format --check-formatted
+      - run: mix test
+
+  escript:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: erlef/setup-beam@v1
         with:
           otp-version: ${{ env.ESCRIPT_OTP_VERSION }}
           elixir-version: ${{ env.ESCRIPT_ELIXIR_VERSION }}
 
-      - run: mix deps.get
-      - run: mix format --check-formatted
-      - run: mix test
+      # Production deps only, so nothing test-only has to compile on OTP 26.
+      - run: mix deps.get --only prod
+        env:
+          MIX_ENV: prod
 
       - name: Build the escript
         run: mix escript.build
@@ -166,7 +183,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: [test, bundle]
+    needs: [test, escript, bundle]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
