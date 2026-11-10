@@ -9,10 +9,10 @@ curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/
 jurisdictional juricode "Vacaville, CA"
 ```
 
-On Linux (x86_64 and arm64) and Apple silicon Macs, the release carries its own Erlang runtime.
-There is nothing else to install.
+The release carries its own Erlang runtime, so there is nothing else to install.
+Builds exist for Linux (x86_64 and arm64) and Apple silicon Macs.
 Linux needs glibc 2.35 or newer and OpenSSL 3, as on Ubuntu 22.04, Debian 12, and Fedora 36 and later.
-Other systems get the escript, which needs Erlang/OTP 26 or newer (`brew install erlang`).
+On other systems, build from source.
 
 The script checks the checksum, puts the release in `~/.local/share/jurisdictional`, links `jurisdictional` into `~/.local/bin`, and confirms it runs.
 Set `JURISDICTIONAL_VERSION=v0.1.0` for a specific release, or `JURISDICTIONAL_INSTALL_DIR` for another folder.
@@ -29,7 +29,7 @@ Each release also attaches it as `juricode-workflow.yml`.
 
 ## Release
 
-The Release workflow runs the tests, builds the escript and a bundled release for each platform, and publishes them to GitHub.
+The Release workflow runs the tests, builds a bundled release for each platform, and publishes them to GitHub.
 It also attaches `geo-layers.json`, the public boundary layers, for other apps to fetch.
 Then it installs from the published release on Ubuntu, macOS, and a clean Debian container with no Erlang.
 Bump `version` in `mix.exs`, push, then run it from the Actions tab or from here:

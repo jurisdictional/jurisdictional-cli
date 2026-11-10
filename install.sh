@@ -3,9 +3,8 @@
 #
 #   curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
 #
-# Linux (x86_64, arm64) and Apple silicon Macs get a release that carries its
-# own Erlang runtime, so nothing else needs installing. Other systems get the
-# escript, which needs Erlang/OTP 26 or newer.
+# Installs a release that carries its own Erlang runtime, so nothing else needs
+# installing. Builds exist for Linux (x86_64, arm64) and Apple silicon Macs.
 #
 # Environment:
 #   JURISDICTIONAL_VERSION      release tag to install, e.g. v0.1.0 (default: latest)
@@ -33,7 +32,7 @@ case "$(uname -s)-$(uname -m)" in
   Linux-x86_64 | Linux-amd64) target="linux-x86_64" ;;
   Linux-aarch64 | Linux-arm64) target="linux-arm64" ;;
   Darwin-arm64) target="macos-arm64" ;;
-  *) target="" ;;
+  *) fail "no build for $(uname -s) $(uname -m) yet. Build from source: https://github.com/$repo#build-from-source" ;;
 esac
 
 tmp=$(mktemp -d)
@@ -54,39 +53,26 @@ verify() {
   [ "$expected" = "$actual" ] || fail "checksum mismatch for $1 (expected $expected, got $actual)"
 }
 
-echo "Downloading jurisdictional ($version, ${target:-escript})..."
+echo "Downloading jurisdictional ($version, $target)..."
 fetch SHA256SUMS
 
-if [ -n "$target" ]; then
-  archive="jurisdictional-$target.tar.gz"
-  fetch "$archive"
-  verify "$archive"
+archive="jurisdictional-$target.tar.gz"
+fetch "$archive"
+verify "$archive"
 
-  mkdir -p "$tmp/unpack"
-  tar -xzf "$tmp/$archive" -C "$tmp/unpack"
-  [ -x "$tmp/unpack/jurisdictional/bin/jurisdictional" ] || fail "$archive has no bin/jurisdictional"
+mkdir -p "$tmp/unpack"
+tar -xzf "$tmp/$archive" -C "$tmp/unpack"
+[ -x "$tmp/unpack/jurisdictional/bin/jurisdictional" ] || fail "$archive has no bin/jurisdictional"
 
-  mkdir -p "$(dirname "$home")"
-  rm -rf "$home.old"
-  if [ -e "$home" ]; then mv "$home" "$home.old"; fi
-  mv "$tmp/unpack/jurisdictional" "$home"
-  rm -rf "$home.old"
+mkdir -p "$(dirname "$home")"
+rm -rf "$home.old"
+if [ -e "$home" ]; then mv "$home" "$home.old"; fi
+mv "$tmp/unpack/jurisdictional" "$home"
+rm -rf "$home.old"
 
-  mkdir -p "$dir"
-  rm -f "$dir/jurisdictional"
-  ln -s "$home/bin/jurisdictional" "$dir/jurisdictional"
-else
-  command -v erl >/dev/null 2>&1 ||
-    fail "no bundled build for $(uname -s) $(uname -m); the escript needs Erlang/OTP 26+, e.g. 'brew install erlang'."
-  otp=$(erl -noshell -eval 'io:format("~s", [erlang:system_info(otp_release)]), halt().' 2>/dev/null || echo 0)
-  [ "$otp" -ge 26 ] 2>/dev/null || fail "found Erlang/OTP $otp; the escript needs 26 or newer."
-
-  fetch jurisdictional
-  verify jurisdictional
-  mkdir -p "$dir"
-  rm -f "$dir/jurisdictional"
-  install -m 755 "$tmp/jurisdictional" "$dir/jurisdictional"
-fi
+mkdir -p "$dir"
+rm -f "$dir/jurisdictional"
+ln -s "$home/bin/jurisdictional" "$dir/jurisdictional"
 
 # Confirm the installed command actually runs, not just that it was copied.
 "$dir/jurisdictional" help | grep -q "client for the Jurisdictional HTTP API" ||
