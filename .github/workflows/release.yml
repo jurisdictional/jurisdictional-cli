@@ -120,7 +120,7 @@ jobs:
             os: ubuntu-22.04-arm
           # setup-beam's macOS builds link OpenSSL statically.
           - target: macos-arm64
-            os: macos-14
+            os: macos-15
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
