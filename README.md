@@ -4,20 +4,34 @@ Command-line client for the Jurisdictional HTTP API.
 
 ## Install
 
-The CLI needs Erlang/OTP 26 or newer (`brew install erlang` or `apt install erlang`).
-Then install the latest release:
-
 ```bash
 curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
 jurisdictional juricode "Vacaville, CA"
 ```
 
-The script checks the checksum, puts `jurisdictional` in `~/.local/bin`, and confirms it runs.
+On Linux (x86_64 and arm64) and Apple silicon Macs, the release carries its own Erlang runtime.
+There is nothing else to install.
+Linux needs glibc 2.35 or newer and OpenSSL 3, as on Ubuntu 22.04, Debian 12, and Fedora 36 and later.
+Other systems get the escript, which needs Erlang/OTP 26 or newer (`brew install erlang`).
+
+The script checks the checksum, puts the release in `~/.local/share/jurisdictional`, links `jurisdictional` into `~/.local/bin`, and confirms it runs.
 Set `JURISDICTIONAL_VERSION=v0.1.0` for a specific release, or `JURISDICTIONAL_INSTALL_DIR` for another folder.
+
+To install by hand, download `jurisdictional-<platform>.tar.gz` from the release page, unpack it, and run `jurisdictional/bin/jurisdictional`.
+A Mac marks a browser download as quarantined; `xattr -dr com.apple.quarantine jurisdictional` clears it.
+
+### In GitHub Actions
+
+`examples/juricode-workflow.yml` installs the CLI and runs `juricode` for an address.
+The job fails when the command exits with anything other than 0.
+Copy it to `.github/workflows/` in your repository.
+Each release also attaches it as `juricode-workflow.yml`.
 
 ## Release
 
-The Release workflow builds the escript, runs the tests, publishes a GitHub release, and installs from it on Linux and macOS.
+The Release workflow runs the tests, builds the escript and a bundled release for each platform, and publishes them to GitHub.
+It also attaches `geo-layers.json`, the public boundary layers, for other apps to fetch.
+Then it installs from the published release on Ubuntu, macOS, and a clean Debian container with no Erlang.
 Bump `version` in `mix.exs`, push, then run it from the Actions tab or from here:
 
 ```bash
@@ -29,14 +43,13 @@ gh run watch
 
 ```bash
 mix deps.get
-mix escript.build
+mix escript.build                 # ./jurisdictional, needs Erlang to run
+MIX_ENV=prod mix release          # _build/prod/rel/jurisdictional_cli, carries its own runtime
 ./jurisdictional login
 ./jurisdictional juricode "Vacaville, CA"
 ./jurisdictional agencies list --jurisdiction 70118
 ```
 
-The escript needs Erlang on the machine that runs it.
-A later release can bundle the runtime.
 `login` opens the browser, prints a short code, and waits for approval at `/device`.
 It then writes `~/.jurisdictional/credentials.json` at mode 600.
 It does not write `~/.jurisdictional/token`.

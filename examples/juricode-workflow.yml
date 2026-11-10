@@ -1,0 +1,40 @@
+# Look up the governments that cover an address, from GitHub Actions.
+#
+# Copy this file to .github/workflows/juricode.yml in your repository.
+# Run it from the Actions tab, or with: gh workflow run juricode.yml -f address="Vacaville, CA"
+#
+# The CLI carries its own runtime, so the job installs nothing else.
+# The job fails when `jurisdictional juricode` exits with anything other than 0.
+name: Juricode
+
+on:
+  workflow_dispatch:
+    inputs:
+      address:
+        description: Address or place to look up
+        default: Vacaville, CA
+
+jobs:
+  juricode:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install jurisdictional
+        run: curl -fsSL https://github.com/afomi/jurisdictional-cli/releases/latest/download/install.sh | sh
+
+      - name: Look up the address
+        env:
+          ADDRESS: ${{ inputs.address }}
+        run: |
+          status=0
+          "$HOME/.local/bin/jurisdictional" --json juricode "$ADDRESS" > juricode.json || status=$?
+          if [ "$status" -ne 0 ]; then
+            echo "::error::jurisdictional juricode exited with $status"
+            cat juricode.json
+            exit "$status"
+          fi
+          echo "Found $(grep -o '"ocd_id"' juricode.json | wc -l) jurisdictions for $ADDRESS"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: juricode
+          path: juricode.json

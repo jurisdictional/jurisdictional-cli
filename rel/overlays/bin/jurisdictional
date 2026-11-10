@@ -1,0 +1,17 @@
+#!/bin/sh
+# Runs the jurisdictional CLI from this release.
+# The release carries its own Erlang runtime, so nothing else needs installing.
+set -e
+
+# Follow symlinks, so a link in ~/.local/bin still finds the release.
+self="$0"
+while [ -L "$self" ]; do
+  link=$(readlink "$self")
+  case "$link" in
+    /*) self="$link" ;;
+    *) self="$(dirname "$self")/$link" ;;
+  esac
+done
+root=$(cd "$(dirname "$self")/.." && pwd -P)
+
+exec "$root/bin/jurisdictional_cli" eval "JurisdictionalCli.Release.main()" "$@"

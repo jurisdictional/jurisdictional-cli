@@ -1,5 +1,5 @@
-# Build the escript, publish it as a GitHub release, then install it from that
-# release on Linux and macOS to prove the published file works.
+# Build and publish a jurisdictional-cli release, then install it from that
+# release on clean machines to prove the published files work.
 #
 # Trigger from the Actions tab ("Release" → "Run workflow"), or from a terminal:
 #   gh workflow run release.yml
@@ -8,6 +8,14 @@
 #
 # The version comes from mix.exs. Bump it there before releasing; an existing
 # tag fails the run instead of overwriting a published release.
+#
+# Assets:
+#   jurisdictional-<target>.tar.gz  mix release with its own Erlang runtime
+#   jurisdictional                  escript, for systems without a bundled build (needs OTP 26+)
+#   install.sh                      picks the right file, checks SHA256SUMS, confirms it runs
+#   juricode-workflow.yml           example GitHub Actions workflow
+#   geo-layers.json                 public boundary layers, for other apps to fetch
+#   SHA256SUMS                      checksums for every file above
 name: Release
 
 on:
@@ -26,23 +34,21 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Build on the oldest supported OTP. A newer OTP runs older BEAM files, not
-  # the other way round, so this widens where the escript runs.
-  OTP_VERSION: "26.2"
-  ELIXIR_VERSION: "1.17.3"
+  # The bundled release carries its own runtime, so it can use a current OTP.
+  OTP_VERSION: "28"
+  ELIXIR_VERSION: "1.19"
+  # The escript runs on the user's Erlang. A newer OTP runs older BEAM files,
+  # not the other way round, so it is built on the oldest supported OTP.
+  ESCRIPT_OTP_VERSION: "26.2"
+  ESCRIPT_ELIXIR_VERSION: "1.17.3"
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: ${{ env.OTP_VERSION }}
-          elixir-version: ${{ env.ELIXIR_VERSION }}
 
       - name: Read the version from mix.exs
         id: version
@@ -59,12 +65,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - uses: actions/cache@v4
+      - uses: erlef/setup-beam@v1
         with:
-          path: |
-            deps
-            _build
-          key: mix-${{ env.OTP_VERSION }}-${{ env.ELIXIR_VERSION }}-${{ hashFiles('mix.lock') }}
+          otp-version: ${{ env.ESCRIPT_OTP_VERSION }}
+          elixir-version: ${{ env.ESCRIPT_ELIXIR_VERSION }}
 
       - run: mix deps.get
       - run: mix format --check-formatted
@@ -79,68 +83,187 @@ jobs:
         run: |
           ./jurisdictional help | grep -q "client for the Jurisdictional HTTP API" \
             || { echo "::error::escript did not print its usage"; exit 1; }
-          sha256sum jurisdictional > jurisdictional.sha256
-          cat jurisdictional.sha256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: jurisdictional
-          path: |
-            jurisdictional
-            jurisdictional.sha256
-            install.sh
+          name: escript
+          path: jurisdictional
+          if-no-files-found: error
+
+  bundle:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Built on the oldest Ubuntu we target, so it runs on glibc 2.35+ with OpenSSL 3.
+          - target: linux-x86_64
+            os: ubuntu-22.04
+          - target: linux-arm64
+            os: ubuntu-22.04-arm
+          # setup-beam's macOS builds link OpenSSL statically.
+          - target: macos-arm64
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ env.OTP_VERSION }}
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+
+      - run: mix deps.get
+        env:
+          MIX_ENV: prod
+
+      - name: Build the release
+        run: mix release --overwrite
+        env:
+          MIX_ENV: prod
+
+      - name: Stage the tarball
+        run: |
+          mkdir -p stage
+          cp -R _build/prod/rel/jurisdictional_cli stage/jurisdictional
+          mkdir -p stage/jurisdictional/examples
+          cp examples/juricode-workflow.yml stage/jurisdictional/examples/
+          tar -czf "jurisdictional-${{ matrix.target }}.tar.gz" -C stage jurisdictional
+          ls -la "jurisdictional-${{ matrix.target }}.tar.gz"
+
+      - name: Check crypto links only to system libraries
+        run: |
+          nif=$(ls stage/jurisdictional/lib/crypto-*/priv/lib/crypto.so)
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            otool -L "$nif"
+            if otool -L "$nif" | tail -n +2 | grep -Ev '^[[:space:]]*/(usr/lib|System)/'; then
+              echo "::error::crypto.so links outside the system; the tarball would not be portable"
+              exit 1
+            fi
+          else
+            ldd "$nif"
+            if ldd "$nif" | grep -q "not found"; then
+              echo "::error::crypto.so has a missing library"
+              exit 1
+            fi
+          fi
+
+      # The release starts its own erts-*/bin/erl, never one on PATH.
+      # The debian job in verify-install proves it on a machine with no Erlang at all.
+      - name: Run it with setup-beam's Erlang off PATH
+        run: |
+          bin="$PWD/stage/jurisdictional/bin/jurisdictional"
+          # shellcheck disable=SC2016 # the inner shell expands these
+          env -i HOME="$HOME" PATH=/usr/bin:/bin sh -c '
+            "$0" help | grep -q "client for the Jurisdictional HTTP API"
+            "$0" --json juricode "Vacaville, CA" | grep -q "\"jurisdictions\""
+          ' "$bin"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bundle-${{ matrix.target }}
+          path: jurisdictional-${{ matrix.target }}.tar.gz
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [test, bundle]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
-          name: jurisdictional
+          path: dist
+          merge-multiple: true
+
+      - name: Fetch the public geo layers
+        run: |
+          mkdir -p cli
+          tar -xzf dist/jurisdictional-linux-x86_64.tar.gz -C cli
+          cli/jurisdictional/bin/jurisdictional --json geo layers > dist/geo-layers.json
+          jq -e 'type == "object" or type == "array"' dist/geo-layers.json > /dev/null \
+            || { echo "::error::geo layers did not return JSON"; exit 1; }
+          size=$(wc -c < dist/geo-layers.json)
+          echo "geo-layers.json: $size bytes"
+          [ "$size" -gt 100000 ] || { echo "::error::geo layers looks too small ($size bytes)"; exit 1; }
+
+      - name: Add the installer, the example, and checksums
+        run: |
+          cp install.sh dist/
+          cp examples/juricode-workflow.yml dist/
+          chmod +x dist/jurisdictional
+          (cd dist && sha256sum -- * > SHA256SUMS && cat SHA256SUMS)
 
       - name: Create the release
         run: |
           flags=(--generate-notes --target "$GITHUB_SHA" --title "$TAG")
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
-          gh release create "$TAG" jurisdictional jurisdictional.sha256 install.sh \
-            --repo "$GITHUB_REPOSITORY" "${flags[@]}"
-          # Confirm all three files are attached, not just that the call returned.
-          assets=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort | tr '\n' ' ')
-          echo "assets: $assets"
-          [ "$assets" = "install.sh jurisdictional jurisdictional.sha256 " ] \
-            || { echo "::error::release assets are incomplete: $assets"; exit 1; }
+          gh release create "$TAG" dist/* --repo "$GITHUB_REPOSITORY" "${flags[@]}"
+
+          # Confirm every file is attached, not just that the call returned.
+          # shellcheck disable=SC2012 # dist holds only our own asset names
+          expected=$(ls dist | sort | tr '\n' ' ')
+          attached=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name' | sort | tr '\n' ' ')
+          echo "expected: $expected"
+          echo "attached: $attached"
+          [ "$expected" = "$attached" ] || { echo "::error::release assets are incomplete"; exit 1; }
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ needs.build.outputs.tag }}
+          TAG: ${{ needs.test.outputs.tag }}
           PRERELEASE: ${{ inputs.prerelease }}
 
   verify-install:
-    needs: [build, publish]
+    needs: [test, publish]
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        include:
+          - name: ubuntu
+            os: ubuntu-latest
+          - name: ubuntu-arm
+            os: ubuntu-24.04-arm
+          - name: macos
+            os: macos-latest
+          # A clean distro with no Erlang, the case issue #1 is about.
+          - name: debian
+            os: ubuntu-latest
+            container: debian:12
+            strict: true
+    name: verify-install (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
-      - uses: erlef/setup-beam@v1
-        if: runner.os == 'Linux'
-        with:
-          otp-version: ${{ env.OTP_VERSION }}
-
-      - name: Install Erlang
-        if: runner.os == 'macOS'
-        run: brew install erlang
+      - name: Install curl in the container
+        if: matrix.container != ''
+        run: apt-get update -qq && apt-get install -y -qq curl ca-certificates > /dev/null
 
       - name: Install from the published release
         run: |
           curl -fsSL "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/install.sh" \
-            | JURISDICTIONAL_VERSION="$TAG" JURISDICTIONAL_INSTALL_DIR="$RUNNER_TEMP/bin" sh
+            | JURISDICTIONAL_VERSION="$TAG" sh
         env:
-          TAG: ${{ needs.build.outputs.tag }}
+          TAG: ${{ needs.test.outputs.tag }}
 
-      - name: Run a public lookup
+      - name: Confirm the bundled build was installed
         run: |
-          "$RUNNER_TEMP/bin/jurisdictional" --json juricode "Vacaville, CA" > out.json
-          grep -q '"jurisdictions"' out.json \
-            || { echo "::error::juricode did not return jurisdictions"; cat out.json; exit 1; }
+          target=$(readlink "$HOME/.local/bin/jurisdictional" || true)
+          echo "jurisdictional -> $target"
+          case "$target" in
+            */.local/share/jurisdictional/bin/jurisdictional) ;;
+            *) echo "::error::expected a link into the bundled release, got '$target'"; exit 1 ;;
+          esac
+
+      - name: Confirm this machine has no Erlang
+        if: matrix.strict
+        run: |
+          if command -v erl || command -v elixir; then echo "::error::Erlang is installed; this job should prove the opposite"; exit 1; fi
+
+      - name: Run the example workflow's lookup
+        run: |
+          # shellcheck disable=SC2016 # the inner shell expands these
+          env -i HOME="$HOME" PATH=/usr/bin:/bin sh -c '
+            status=0
+            "$HOME/.local/bin/jurisdictional" --json juricode "Vacaville, CA" > juricode.json || status=$?
+            if [ "$status" -ne 0 ]; then echo "juricode exited with $status"; cat juricode.json; exit "$status"; fi
+            grep -q "\"jurisdictions\"" juricode.json
+          '

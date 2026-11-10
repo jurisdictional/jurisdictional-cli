@@ -14,6 +14,13 @@ defmodule JurisdictionalCli.MixProject do
         # A crash dump copies process memory, which can hold a password, into the cwd.
         emu_args: "-env ERL_CRASH_DUMP_BYTES 0"
       ],
+      releases: [
+        jurisdictional_cli: [
+          include_executables_for: [:unix],
+          include_erts: true,
+          strip_beams: true
+        ]
+      ],
       aliases: [
         precommit: ["format", "test"]
       ]
