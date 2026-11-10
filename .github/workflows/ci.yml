@@ -1,0 +1,50 @@
+# Format, Credo, Dialyzer and tests on every push and pull request.
+# The same checks run locally with `mix precommit`.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  MIX_ENV: test
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        id: beam
+        with:
+          otp-version: "28"
+          elixir-version: "1.19"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
+
+      # Building the PLT takes minutes; it only changes with OTP, Elixir or deps.
+      - uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: plt-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('mix.lock') }}
+
+      - run: mix deps.get
+      - run: mix compile --warnings-as-errors
+      - run: mix format --check-formatted
+      - run: mix credo
+      - run: mix dialyzer --format github
+      - run: mix test

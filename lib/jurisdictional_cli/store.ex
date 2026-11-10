@@ -76,15 +76,23 @@ defmodule JurisdictionalCli.Store do
     Map.new(query, fn {key, value} -> {to_string(key), to_string(value)} end)
   end
 
-  defp token_body?(body) do
+  @doc """
+  True when the body is JSON with an `access_token` or `refresh_token` key at any depth.
+  """
+  def token_body?(body) do
     case Jason.decode(body) do
-      {:ok, map} when is_map(map) ->
-        Map.has_key?(map, "access_token") or Map.has_key?(map, "refresh_token")
-
-      _ ->
-        false
+      {:ok, decoded} -> holds_token?(decoded)
+      _ -> false
     end
   end
+
+  defp holds_token?(map) when is_map(map) do
+    Map.has_key?(map, "access_token") or Map.has_key?(map, "refresh_token") or
+      Enum.any?(map, fn {_key, value} -> holds_token?(value) end)
+  end
+
+  defp holds_token?(list) when is_list(list), do: Enum.any?(list, &holds_token?/1)
+  defp holds_token?(_value), do: false
 
   defp visible_segment(segment) do
     case String.trim_leading(segment, ".") do
@@ -98,8 +106,9 @@ defmodule JurisdictionalCli.Store do
   defp query_slug(query) do
     query
     |> Enum.sort_by(fn {key, _} -> to_string(key) end)
-    |> Enum.map(fn {key, value} -> slug(to_string(key)) <> "_" <> slug(to_string(value)) end)
-    |> Enum.join("__")
+    |> Enum.map_join("__", fn {key, value} ->
+      slug(to_string(key)) <> "_" <> slug(to_string(value))
+    end)
   end
 
   defp slug(value) do

@@ -9,6 +9,7 @@ defmodule JurisdictionalCli do
 
   alias JurisdictionalCli.Client
   alias JurisdictionalCli.Present
+  alias JurisdictionalCli.Secret
   alias JurisdictionalCli.Store
 
   @exit_ok 0
@@ -71,6 +72,7 @@ defmodule JurisdictionalCli do
   --paste redeems the refresh token the approval page shows once.
   """
 
+  @spec main([String.t()]) :: no_return()
   def main(args) do
     args
     |> run()
@@ -428,73 +430,52 @@ defmodule JurisdictionalCli do
   end
 
   defp poll_device(device_code, opts, session, interval, expires_in, waited, polls) do
-    cond do
-      waited >= expires_in or polls > expires_in ->
-        {:expired, nil}
+    if waited >= expires_in or polls > expires_in do
+      {:expired, nil}
+    else
+      case Client.post(
+             session,
+             "/api/v1/auth/token",
+             %{
+               "grant_type" => @device_grant,
+               "device_code" => device_code,
+               "client_id" => @client_id
+             }
+           ) do
+        {:ok, _session, 200, body, _headers} ->
+          {:approved, body}
 
-      true ->
-        case Client.post(
-               session,
-               "/api/v1/auth/token",
-               %{
-                 "grant_type" => @device_grant,
-                 "device_code" => device_code,
-                 "client_id" => @client_id
-               }
-             ) do
-          {:ok, _session, 200, body, _headers} ->
-            {:approved, body}
+        {:ok, _session, _status, body, _} ->
+          error = device_error_code(body)
 
-          {:ok, _session, _status, body, _} ->
-            case device_error_code(body) do
-              "authorization_pending" ->
-                wait(opts, interval)
+          case retry_interval(error, interval) do
+            {:retry, interval} ->
+              wait(opts, interval)
+              waited = waited + max(interval, 1)
+              poll_device(device_code, opts, session, interval, expires_in, waited, polls + 1)
 
-                poll_device(
-                  device_code,
-                  opts,
-                  session,
-                  interval,
-                  expires_in,
-                  waited + max(interval, 1),
-                  polls + 1
-                )
+            :stop ->
+              device_failure(error, body)
+          end
 
-              "slow_down" ->
-                interval = interval + 5
-                wait(opts, interval)
+        {:network, reason} ->
+          {:network, reason}
 
-                poll_device(
-                  device_code,
-                  opts,
-                  session,
-                  interval,
-                  expires_in,
-                  waited + max(interval, 1),
-                  polls + 1
-                )
-
-              "access_denied" ->
-                {:denied, body}
-
-              "expired_token" ->
-                {:expired, body}
-
-              "invalid_grant" ->
-                {:used, body}
-
-              _other ->
-                {:error, body}
-            end
-
-          {:network, reason} ->
-            {:network, reason}
-
-          {:error, code, message} ->
-            {:client, code, message}
-        end
+        {:error, code, message} ->
+          {:client, code, message}
+      end
     end
   end
+
+  # RFC 8628 §3.5: keep polling while pending, and add 5 seconds on slow_down.
+  defp retry_interval("authorization_pending", interval), do: {:retry, interval}
+  defp retry_interval("slow_down", interval), do: {:retry, interval + 5}
+  defp retry_interval(_error, _interval), do: :stop
+
+  defp device_failure("access_denied", body), do: {:denied, body}
+  defp device_failure("expired_token", body), do: {:expired, body}
+  defp device_failure("invalid_grant", body), do: {:used, body}
+  defp device_failure(_error, body), do: {:error, body}
 
   defp finish_device({:approved, body}, opts, globals) do
     opts
@@ -552,7 +533,7 @@ defmodule JurisdictionalCli do
 
     with_host(opts, globals, fn session ->
       case Client.post(session, "/api/v1/auth/refresh", %{
-             "refresh_token" => JurisdictionalCli.Secret.Redacted.wrap(token)
+             "refresh_token" => token
            }) do
         {:ok, _session, 200, body, _headers} ->
           opts
@@ -632,19 +613,12 @@ defmodule JurisdictionalCli do
   end
 
   defp hostname do
-    case :inet.gethostname() do
-      {:ok, name} ->
-        name = name |> List.to_string() |> String.trim() |> String.slice(0, 64)
+    {:ok, name} = :inet.gethostname()
+    name = name |> List.to_string() |> String.trim() |> String.slice(0, 64)
 
-        if name != "" and String.match?(name, ~r/\A[[:print:]]+\z/u) do
-          name
-        else
-          "Jurisdictional CLI"
-        end
-
-      _ ->
-        "Jurisdictional CLI"
-    end
+    if name != "" and String.match?(name, ~r/\A[[:print:]]+\z/u),
+      do: name,
+      else: "Jurisdictional CLI"
   end
 
   defp interval_of(data), do: positive_int(data["interval"]) || 5
@@ -1770,7 +1744,7 @@ defmodule JurisdictionalCli do
 
     case Process.get(:jurisdictional_cli_lines, []) do
       [_ | _] -> read_line(opts, prompt)
-      [] -> if opts[:capture?], do: nil, else: JurisdictionalCli.Secret.read(prompt)
+      [] -> if opts[:capture?], do: nil, else: Secret.read(prompt)
     end
   end
 

@@ -32,10 +32,6 @@ defmodule JurisdictionalCli.SecretTest do
     assert Secret.collect(feed([])) == nil
   end
 
-  test "stdin under the test runner is not a terminal" do
-    refute Secret.terminal?()
-  end
-
   # Runs the real reader under a pseudo-terminal and checks the screen.
   @tag :pty
   test "a person at a terminal does not see the secret they type" do

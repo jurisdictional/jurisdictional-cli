@@ -7,6 +7,10 @@ defmodule JurisdictionalCli.MixProject do
       version: "0.1.0",
       elixir: "~> 1.17",
       start_permanent: Mix.env() == :prod,
+      dialyzer: [
+        plt_local_path: "priv/plts",
+        plt_add_apps: [:mix, :ex_unit]
+      ],
       deps: deps(),
       escript: [
         main_module: JurisdictionalCli,
@@ -22,9 +26,14 @@ defmodule JurisdictionalCli.MixProject do
         ]
       ],
       aliases: [
-        precommit: ["format", "test"]
+        precommit: ["format", "credo --strict", "dialyzer", "test"]
       ]
     ]
+  end
+
+  # precommit runs `mix test`, which has to start in the test environment.
+  def cli do
+    [preferred_envs: [precommit: :test]]
   end
 
   def application do
@@ -38,7 +47,10 @@ defmodule JurisdictionalCli.MixProject do
     [
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
-      {:bypass, "~> 2.1", only: :test}
+      {:bypass, "~> 2.1", only: :test},
+      {:stream_data, "~> 1.1", only: [:dev, :test]},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 end

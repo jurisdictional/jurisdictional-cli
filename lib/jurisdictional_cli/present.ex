@@ -167,8 +167,6 @@ defmodule JurisdictionalCli.Present do
   defp cell_string(value) when is_atom(value), do: Atom.to_string(value)
   defp cell_string(_value), do: ""
 
-  defp truncate(_text, max) when max < 1, do: ""
-
   defp truncate(text, max) do
     chars = String.graphemes(text)
 

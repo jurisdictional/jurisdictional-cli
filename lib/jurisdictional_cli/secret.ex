@@ -58,26 +58,3 @@ defmodule JurisdictionalCli.Secret do
   defp drop_last(""), do: ""
   defp drop_last(acc), do: acc |> String.graphemes() |> Enum.drop(-1) |> Enum.join()
 end
-
-defmodule JurisdictionalCli.Secret.Redacted do
-  @moduledoc false
-
-  # Holds a secret so that inspect, error reports and stack traces show
-  # "**redacted**". JSON encoding still sends the real value on the wire.
-  @enforce_keys [:value]
-  defstruct [:value]
-
-  def wrap(value) when is_binary(value), do: %__MODULE__{value: value}
-
-  defimpl Inspect do
-    def inspect(_secret, _opts), do: "#JurisdictionalCli.Secret.Redacted<**redacted**>"
-  end
-
-  defimpl String.Chars do
-    def to_string(_secret), do: "**redacted**"
-  end
-
-  defimpl Jason.Encoder do
-    def encode(%{value: value}, opts), do: Jason.Encode.string(value, opts)
-  end
-end

@@ -279,17 +279,6 @@ defmodule JurisdictionalCliTest do
     end
   end
 
-  test "an inspected secret shows as redacted" do
-    secret = JurisdictionalCli.Secret.Redacted.wrap("jur_ref-Zq8!never-shown")
-
-    refute inspect(secret) =~ "never-shown"
-    refute inspect(%{"refresh_token" => secret}) =~ "never-shown"
-    refute to_string(secret) =~ "never-shown"
-
-    assert Jason.encode!(%{"refresh_token" => secret}) ==
-             ~s({"refresh_token":"jur_ref-Zq8!never-shown"})
-  end
-
   test "login --paste stores credentials at mode 600 and leaves the long-lived token file" do
     home = fresh_home()
     token = Path.join(home, ".jurisdictional/token")

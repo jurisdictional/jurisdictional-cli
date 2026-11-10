@@ -87,3 +87,16 @@ Refreshing an access token happens inside the client.
 There is no `/api/v1` services resource.
 `agencies` does not look up a place name.
 Run `juricode`, then pass that jurisdiction id.
+
+## Contributing
+
+```bash
+mix deps.get
+mix precommit
+```
+
+`mix precommit` formats the code, then runs Credo, Dialyzer, and the tests, including the property tests in `test/property_test.exs`.
+CI runs the same checks on every push and pull request.
+The Credo limits on nesting and complexity in `.credo.exs` match today's worst function.
+Lower them as the command dispatch is split up.
+

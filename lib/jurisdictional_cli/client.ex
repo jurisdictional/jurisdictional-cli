@@ -46,9 +46,8 @@ defmodule JurisdictionalCli.Client do
 
       with :ok <- File.write(tmp, json),
            :ok <- File.chmod(tmp, 0o600),
-           :ok <- File.rename(tmp, path),
-           :ok <- File.chmod(path, 0o600) do
-        :ok
+           :ok <- File.rename(tmp, path) do
+        File.chmod(path, 0o600)
       end
     end
   end
@@ -83,15 +82,13 @@ defmodule JurisdictionalCli.Client do
   end
 
   defp chosen_host(opts, globals) do
-    cond do
-      is_binary(globals.host) and globals.host != "" ->
-        globals.host
-
-      true ->
-        case env(opts, "JURISDICTIONAL_HOST") do
-          host when is_binary(host) and host != "" -> host
-          _ -> default_host()
-        end
+    if is_binary(globals.host) and globals.host != "" do
+      globals.host
+    else
+      case env(opts, "JURISDICTIONAL_HOST") do
+        host when is_binary(host) and host != "" -> host
+        _ -> default_host()
+      end
     end
   end
 
@@ -348,6 +345,7 @@ defmodule JurisdictionalCli.Client do
   defp body_binary(body) when is_map(body) or is_list(body), do: Jason.encode!(body)
   defp body_binary(body), do: to_string(body)
 
+  # Req 0.5 gives response headers as a map of lists.
   defp header_list(headers) when is_map(headers) do
     headers
     |> Enum.flat_map(fn {key, value} ->
@@ -355,10 +353,6 @@ defmodule JurisdictionalCli.Client do
       |> List.wrap()
       |> Enum.map(fn item -> {to_string(key), to_string(item)} end)
     end)
-  end
-
-  defp header_list(headers) when is_list(headers) do
-    Enum.map(headers, fn {key, value} -> {to_string(key), to_string(value)} end)
   end
 
   defp exception_reason(%{reason: reason}), do: reason
