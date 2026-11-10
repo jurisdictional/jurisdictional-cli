@@ -31,9 +31,9 @@ defmodule JurisdictionalCli.Secret do
     end
   end
 
-  @doc "True when stdin is a terminal."
-  def terminal? do
-    Keyword.get(:io.getopts(:standard_io), :stdin, false) == true
+  @doc "True when `stream` (`:stdin` or `:stdout`) is a terminal."
+  def terminal?(stream \\ :stdin) when stream in [:stdin, :stdout] do
+    Keyword.get(:io.getopts(:standard_io), stream, false) == true
   end
 
   @doc """

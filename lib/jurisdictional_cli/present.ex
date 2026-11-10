@@ -111,7 +111,8 @@ defmodule JurisdictionalCli.Present do
   defp maybe_url(cols, rows) do
     case Enum.find(["url", "website", "website_url", "online_url"], &any_field?(rows, &1)) do
       nil -> cols
-      key -> cols ++ [{"url", &cell(&1, key)}]
+      # A long URL would widen every row; --json prints it in full.
+      key -> cols ++ [{"url", fn row -> row |> cell(key) |> truncate(72) end}]
     end
   end
 

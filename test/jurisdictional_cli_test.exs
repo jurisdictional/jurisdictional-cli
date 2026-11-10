@@ -871,6 +871,38 @@ defmodule JurisdictionalCliTest do
     assert Enum.count(flush(:hit), fn {_method, path} -> path == "/api/mcp/execute" end) == 1
   end
 
+  test "at a terminal, delete_entity asks first and sends only on yes" do
+    for {answer, sent} <- [{"y", 1}, {"n", 0}, {"", 0}] do
+      parent = self()
+
+      {code, _out, err} =
+        invoke(
+          ["tool", "delete_entity", "--id", "9"],
+          fn bypass ->
+            Bypass.expect(bypass, fn conn ->
+              send(parent, {:hit, conn.method, conn.request_path})
+
+              body =
+                if conn.request_path == "/api/mcp/execute",
+                  do: ~s({"deleted":true}),
+                  else: @tools
+
+              Plug.Conn.resp(conn, 200, body)
+            end)
+          end,
+          stdin_tty?: true,
+          tty?: true,
+          lines: [answer]
+        )
+
+      assert err =~ "call delete_entity? [y/N]"
+      assert code == if(sent == 1, do: 0, else: 2), "answer #{inspect(answer)}: #{err}"
+
+      assert Enum.count(flush(:hit), fn {_method, path} -> path == "/api/mcp/execute" end) ==
+               sent
+    end
+  end
+
   test "dry-run skips the destructive confirmation" do
     parent = self()
 
@@ -930,6 +962,23 @@ defmodule JurisdictionalCliTest do
     assert out =~ "0681554"
   end
 
+  test "--help, -h and --version answer without a command" do
+    for flag <- ["--help", "-h", "help"] do
+      {code, out, _err} = capture([flag])
+      assert code == 0, flag
+      assert out =~ "client for the Jurisdictional HTTP API"
+      assert out =~ "--help | --version"
+    end
+
+    version = Mix.Project.config()[:version]
+
+    for flag <- ["--version", "-V", "version"] do
+      {code, out, _err} = capture([flag])
+      assert code == 0, flag
+      assert out == "jurisdictional #{version}\n"
+    end
+  end
+
   test "help does not call the network" do
     {code, out, err} = capture(["help"])
     assert code == 0
@@ -957,6 +1006,7 @@ defmodule JurisdictionalCliTest do
       env: Keyword.get(opts, :env, %{}),
       lines: Keyword.get(opts, :lines, []),
       tty?: Keyword.get(opts, :tty?, false),
+      stdin_tty?: Keyword.get(opts, :stdin_tty?, false),
       capture?: true,
       sleep: Keyword.get(opts, :sleep),
       open: Keyword.get(opts, :open),

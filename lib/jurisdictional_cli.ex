@@ -27,6 +27,7 @@ defmodule JurisdictionalCli do
 
   Usage:
     jurisdictional <command> [flags]
+    jurisdictional --help | --version
 
   Public records:
     juricode ADDRESS               GET /api/v1/juricode
@@ -73,10 +74,14 @@ defmodule JurisdictionalCli do
   --paste redeems the refresh token the approval page shows once.
   """
 
+  @version Mix.Project.config()[:version]
+
+  # tty?: stdout is a terminal, so print a table instead of raw JSON.
+  # stdin_tty?: someone can answer a [y/N] prompt.
   @spec main([String.t()]) :: no_return()
   def main(args) do
     args
-    |> run()
+    |> run(tty?: Secret.terminal?(:stdout), stdin_tty?: Secret.terminal?(:stdin))
     |> System.halt()
   end
 
@@ -96,8 +101,12 @@ defmodule JurisdictionalCli do
           write(opts, :stdout, @usage)
           @exit_ok
 
-        ["help" | _] ->
+        [help | _] when help in ["help", "--help", "-h"] ->
           write(opts, :stdout, @usage)
+          @exit_ok
+
+        [version] when version in ["version", "--version", "-V"] ->
+          write(opts, :stdout, "jurisdictional #{@version}\n")
           @exit_ok
 
         ["login" | cmd] ->
@@ -142,6 +151,7 @@ defmodule JurisdictionalCli do
     |> Keyword.put(:home, home)
     |> Keyword.put(:now, now)
     |> Keyword.put_new(:tty?, false)
+    |> Keyword.put_new(:stdin_tty?, false)
     |> Keyword.put_new(:lines, [])
     |> Keyword.put(:captured, opts[:capture?] == true)
   end
@@ -863,7 +873,7 @@ defmodule JurisdictionalCli do
   end
 
   defp confirm_or_send(opts, name) do
-    if opts[:tty?] do
+    if opts[:stdin_tty?] do
       answer = read_line(opts, "call #{name}? [y/N] ")
 
       if answer in ["y", "Y", "yes"] do
