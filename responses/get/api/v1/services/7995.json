@@ -1,0 +1,30 @@
+{
+  "data": {
+    "actions": [],
+    "agency": {
+      "id": 11,
+      "name": "Police Department"
+    },
+    "application_process": null,
+    "capacity_upper_bound": null,
+    "contact_info": null,
+    "cost": null,
+    "description": "Residents and businesses with an alarm system must obtain an alarm permit (Ordinance No. 1729). Register, renew and pay false-alarm bills online through the City's False Alarm Reduction Program (administered by PM AM Corporation). Source: https://www.cityofvacaville.gov/government/police-department/permits-records-reports/alarm-permits",
+    "eligibility_requirements": "Required for all residents and businesses in Vacaville with an alarm system",
+    "id": 7995,
+    "inserted_at": "2026-10-23T22:43:02Z",
+    "jurisdiction": {
+      "id": 70118,
+      "level": "place",
+      "name": "Vacaville"
+    },
+    "name": "Alarm Permit Registration and False Alarm Billing",
+    "online_url": "http://www.famspermit.com/Vacaville",
+    "people_served": null,
+    "processing_time": null,
+    "required_documents": null,
+    "service_type": "public_safety",
+    "services_provided": null,
+    "updated_at": "2026-10-23T22:43:02Z"
+  }
+}

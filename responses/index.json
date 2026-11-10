@@ -119,6 +119,24 @@
       "status": 200
     },
     {
+      "captured_at": "2026-11-10T02:22:19.175300Z",
+      "file": "get/api/v1/services/7995.json",
+      "method": "GET",
+      "path": "/api/v1/services/7995",
+      "query": {},
+      "status": 200
+    },
+    {
+      "captured_at": "2026-11-10T02:22:18.429650Z",
+      "file": "get/api/v1/services__jurisdiction_id_70118.json",
+      "method": "GET",
+      "path": "/api/v1/services",
+      "query": {
+        "jurisdiction_id": "70118"
+      },
+      "status": 200
+    },
+    {
       "captured_at": "2026-11-09T19:27:12.722669Z",
       "file": "get/geo/jurisdictions/70118/simplified.json",
       "method": "GET",

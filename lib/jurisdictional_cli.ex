@@ -32,6 +32,7 @@ defmodule JurisdictionalCli do
     juricode ADDRESS               GET /api/v1/juricode
     jurisdictions list|get ID|autocomplete|at-point|scene ID
     agencies list|get ID
+    services list|get ID           --jurisdiction ID, --agency ID, --service-type, --action, --q
     bodies list|positions
     meetings list|get ID
     people get ID
@@ -118,7 +119,7 @@ defmodule JurisdictionalCli do
           juricode(opts, globals, cmd)
 
         [cmd | cmd_args]
-        when cmd in ~w(jurisdictions agencies bodies meetings people nearby activity geo well-known health me devices sync contributions gather tax sourcing images message) ->
+        when cmd in ~w(jurisdictions agencies services bodies meetings people nearby activity geo well-known health me devices sync contributions gather tax sourcing images message) ->
           curated(opts, globals, cmd, cmd_args)
 
         [cmd | _] ->
@@ -1240,6 +1241,13 @@ defmodule JurisdictionalCli do
   defp curated_path("agencies", parsed) do
     with {:ok, flags} <- alias_flag(parsed.flags, "jurisdiction", "jurisdiction-id") do
       collection_path("/api/v1/agencies", %{parsed | flags: flags})
+    end
+  end
+
+  defp curated_path("services", parsed) do
+    with {:ok, flags} <- alias_flag(parsed.flags, "jurisdiction", "jurisdiction-id"),
+         {:ok, flags} <- alias_flag(flags, "agency", "agency-id") do
+      collection_path("/api/v1/services", %{parsed | flags: flags})
     end
   end
 

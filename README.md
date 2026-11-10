@@ -69,10 +69,9 @@ Another app can read the index and open the file.
 A response that contains an access token or a refresh token is not written.
 `responses/` is a checked-in capture of public records for Vacaville.
 See `responses/README.md`.
-Those files are jurisdictions, agencies, bodies, meetings, people, and one boundary.
+Those files are jurisdictions, agencies, services, bodies, meetings, people, and one boundary.
 Activity counts and account settings belong to this app.
 They are not part of that catalog.
-A services read is not in the API yet.
 
 Browser pages, LiveView, the sitemap, the license page, and the labs stay in the browser.
 The device approval page stays in the browser.
@@ -84,9 +83,10 @@ The client computes `image_sha256` from the file, which the server checks.
 Other flags go along as form fields; without a file, the body is JSON.
 `POST /api/v1/juricode` is the same call as `juricode`.
 Refreshing an access token happens inside the client.
-There is no `/api/v1` services resource.
-`agencies` does not look up a place name.
+`agencies` and `services` do not look up a place name.
 Run `juricode`, then pass that jurisdiction id.
+`services list` filters by `--jurisdiction`, `--agency`, `--service-type`, `--action`, and `--q`.
+An unknown `--service-type` or `--action` comes back as a 400 that names the valid values.
 
 ## Contributing
 
